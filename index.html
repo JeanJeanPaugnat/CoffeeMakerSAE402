@@ -53,11 +53,49 @@
 
   <!-- OVERLAY UI for XR mode (kept for domOverlay requirement, content hidden) -->
   <div id="overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1000;">
-    <!-- Debug elements removed for production -->
+    
+    <!-- DEBUG BUTTON - Opens A-Frame Inspector -->
+    <button id="debug-inspector-btn" onclick="document.querySelector('a-scene').components.inspector.openInspector()" 
+      style="position:absolute; top:10px; right:10px; padding:8px 12px; background:#222; color:#0f0; border:2px solid #0f0; 
+      border-radius:6px; font-family:monospace; font-size:12px; cursor:pointer; pointer-events:auto; z-index:9999;">
+      🔧 Inspector (Ctrl+Alt+I)
+    </button>
+    
+    <!-- DEBUG STATUS -->
+    <div id="debug" style="position:absolute; bottom:10px; left:10px; padding:8px 12px; background:rgba(0,0,0,0.7); 
+      color:#0f0; font-family:monospace; font-size:11px; border-radius:4px; pointer-events:none;">
+      Status: Ready
+    </div>
+    <!-- DEBUG PANEL
+    <div id="debug-panel" style="position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.85); color:#0f0; padding:12px; font-family:monospace; font-size:12px; border-radius:8px; max-width:320px; border:1px solid #0f0;">
+      <div style="color:#ff0; font-weight:bold; margin-bottom:8px;">🔧 DEBUG PANEL</div>
+      <div id="debug-xr">XR: --</div>
+      <div id="debug-controllers">Controllers: --</div>
+      <div id="debug-inputs">Inputs: --</div>
+      <div id="debug-grab">Grab: --</div>
+      <div id="debug-customers">Customers: --</div>
+      <div id="debug-objects">Objects: --</div>
+      <div id="debug-buttons" style="color:#0ff;">Buttons: --</div>
+      <div id="debug-axes" style="color:#f0f;">Axes: --</div>
+      <div id="debug-raycast" style="color:#fa0;">Raycast: --</div>
+      <hr style="border-color:#0f0; margin:6px 0;">
+      DEBUG ACTION BUTTONS
+      <div style="display:flex; gap:4px; flex-wrap:wrap; pointer-events:auto;">
+        <button onclick="window.spawnCustomerDebug && window.spawnCustomerDebug()" style="padding:4px 8px; background:#333; color:#0f0; border:1px solid #0f0; cursor:pointer; font-size:10px;">Spawn Customer</button>
+        <button onclick="window.testGrab && window.testGrab()" style="padding:4px 8px; background:#333; color:#0ff; border:1px solid #0ff; cursor:pointer; font-size:10px;">Test Grab</button>
+        <button onclick="window.toggleMenuDebug && window.toggleMenuDebug()" style="padding:4px 8px; background:#333; color:#ff0; border:1px solid #ff0; cursor:pointer; font-size:10px;">Toggle Menu</button>
+      </div>
+      <hr style="border-color:#0f0; margin:6px 0;">
+      <div id="debug-log" style="max-height:80px; overflow-y:auto; font-size:10px; color:#aaa;"></div>
+    </div> -->
   </div>
 
-  <a-scene id="scene" physics="debug:false;gravity:-9.8" vr-mode-ui="enabled:false" renderer="alpha:true;antialias:true"
-    background="color:transparent">
+  <a-scene id="scene" 
+    physics="debug:false;gravity:-9.8" 
+    vr-mode-ui="enabled:false" 
+    renderer="alpha:true;antialias:true"
+    background="color:transparent"
+    inspector="url: https://cdn.jsdelivr.net/gh/aframevr/aframe-inspector@master/dist/aframe-inspector.min.js">
 
     <a-light type="ambient" intensity="0.6"></a-light>
     <a-light type="directional" position="1 2 1" intensity="0.8"></a-light>
