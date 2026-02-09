@@ -82,7 +82,7 @@ window.addEventListener('load', () => {
 
         // --- COFFEE MACHINE AUDIO SETUP ---
         function initCoffeeAudio() {
-            coffeeAudio = new Audio('/sounds/public_assets_café.MP3');
+            coffeeAudio = new Audio(import.meta.env.BASE_URL + 'sounds/public_assets_café.MP3');
             coffeeAudio.volume = 0.7;
         }
         initCoffeeAudio();
