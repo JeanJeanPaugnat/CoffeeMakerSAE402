@@ -1,5 +1,6 @@
 /**
  * Gestion de la session XR, contrôleurs et boucle principale
+ * Inclut le plane detection pour détecter les surfaces réelles
  */
 
 import * as state from './state.js';
@@ -9,6 +10,10 @@ import { checkCoffeeDelivery, removeCustomer } from './customers.js';
 import { toggleInventory, spawnObject } from './inventory.js';
 import { closeWelcomePanel, showARNotification } from './panels.js';
 import { handleCoffeeMachineClick } from './coffee.js';
+
+// Stockage des plans détectés
+const detectedPlanes = new Map(); // XRPlane -> A-Frame entity
+let planeDetectionSupported = false;
 
 /**
  * Ajoute une surface détectée
@@ -33,17 +38,197 @@ export function addSurface(x, y, z) {
 }
 
 /**
+ * Traite les plans détectés par WebXR
+ * Crée des visualisations et des surfaces physiques pour chaque plan
+ */
+function processDetectedPlanes(frame) {
+    const currentPlanes = frame.detectedPlanes;
+    
+    // Supprimer les plans qui n'existent plus
+    for (const [plane, entity] of detectedPlanes) {
+        if (!currentPlanes.has(plane)) {
+            // Plan supprimé
+            if (entity.parentNode) {
+                entity.parentNode.removeChild(entity);
+            }
+            detectedPlanes.delete(plane);
+            console.log('📐 Plan supprimé');
+        }
+    }
+    
+    // Traiter chaque plan détecté
+    for (const plane of currentPlanes) {
+        // Plan déjà traité ?
+        if (detectedPlanes.has(plane)) {
+            // Mettre à jour si nécessaire (le plan peut changer de taille)
+            updatePlaneEntity(plane, detectedPlanes.get(plane), frame);
+        } else {
+            // Nouveau plan détecté
+            const entity = createPlaneEntity(plane, frame);
+            if (entity) {
+                detectedPlanes.set(plane, entity);
+                console.log('📐 Nouveau plan détecté:', plane.orientation);
+            }
+        }
+    }
+}
+
+/**
+ * Crée une entité A-Frame pour visualiser un plan détecté
+ */
+function createPlaneEntity(plane, frame) {
+    const pose = frame.getPose(plane.planeSpace, state.xrRefSpace);
+    if (!pose) return null;
+    
+    // Calculer les dimensions du polygone
+    const polygon = plane.polygon;
+    if (!polygon || polygon.length < 3) return null;
+    
+    // Trouver les dimensions min/max
+    let minX = Infinity, maxX = -Infinity;
+    let minZ = Infinity, maxZ = -Infinity;
+    
+    for (const point of polygon) {
+        minX = Math.min(minX, point.x);
+        maxX = Math.max(maxX, point.x);
+        minZ = Math.min(minZ, point.z);
+        maxZ = Math.max(maxZ, point.z);
+    }
+    
+    const width = maxX - minX;
+    const depth = maxZ - minZ;
+    
+    // Ignorer les plans trop petits
+    if (width < 0.1 || depth < 0.1) return null;
+    
+    // Position du plan
+    const pos = pose.transform.position;
+    const rot = pose.transform.orientation;
+    
+    // Créer le conteneur
+    const entity = document.createElement('a-entity');
+    entity.classList.add('detected-plane');
+    entity.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+    
+    // Appliquer la rotation
+    const quat = new THREE.Quaternion(rot.x, rot.y, rot.z, rot.w);
+    const euler = new THREE.Euler().setFromQuaternion(quat);
+    entity.setAttribute('rotation', `${THREE.MathUtils.radToDeg(euler.x)} ${THREE.MathUtils.radToDeg(euler.y)} ${THREE.MathUtils.radToDeg(euler.z)}`);
+    
+    // Visualisation du plan (semi-transparent)
+    const visual = document.createElement('a-plane');
+    visual.setAttribute('width', width);
+    visual.setAttribute('height', depth);
+    visual.setAttribute('rotation', '-90 0 0'); // Horizontal
+    
+    // Couleur selon l'orientation
+    if (plane.orientation === 'horizontal') {
+        visual.setAttribute('color', '#00ff00'); // Vert pour le sol/tables
+        visual.setAttribute('opacity', '0.15');
+    } else {
+        visual.setAttribute('color', '#0088ff'); // Bleu pour les murs
+        visual.setAttribute('opacity', '0.1');
+    }
+    
+    visual.setAttribute('material', 'shader: flat; transparent: true; side: double');
+    entity.appendChild(visual);
+    
+    // Surface physique invisible (pour la collision)
+    const physics = document.createElement('a-box');
+    physics.setAttribute('width', width);
+    physics.setAttribute('height', '0.02');
+    physics.setAttribute('depth', depth);
+    physics.setAttribute('visible', 'false');
+    physics.setAttribute('static-body', '');
+    entity.appendChild(physics);
+    
+    // Bordure pour mieux voir les limites
+    const border = document.createElement('a-plane');
+    border.setAttribute('width', width + 0.02);
+    border.setAttribute('height', depth + 0.02);
+    border.setAttribute('rotation', '-90 0 0');
+    border.setAttribute('position', '0 -0.001 0');
+    border.setAttribute('color', plane.orientation === 'horizontal' ? '#00cc00' : '#0066cc');
+    border.setAttribute('opacity', '0.3');
+    border.setAttribute('material', 'shader: flat; transparent: true; wireframe: true');
+    entity.appendChild(border);
+    
+    state.sceneEl.appendChild(entity);
+    
+    return entity;
+}
+
+/**
+ * Met à jour une entité de plan existante
+ */
+function updatePlaneEntity(plane, entity, frame) {
+    const pose = frame.getPose(plane.planeSpace, state.xrRefSpace);
+    if (!pose) return;
+    
+    const pos = pose.transform.position;
+    entity.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+    
+    // Recalculer les dimensions
+    const polygon = plane.polygon;
+    if (!polygon || polygon.length < 3) return;
+    
+    let minX = Infinity, maxX = -Infinity;
+    let minZ = Infinity, maxZ = -Infinity;
+    
+    for (const point of polygon) {
+        minX = Math.min(minX, point.x);
+        maxX = Math.max(maxX, point.x);
+        minZ = Math.min(minZ, point.z);
+        maxZ = Math.max(maxZ, point.z);
+    }
+    
+    const width = maxX - minX;
+    const depth = maxZ - minZ;
+    
+    // Mettre à jour les dimensions des enfants
+    const visual = entity.querySelector('a-plane:not([wireframe])');
+    if (visual) {
+        visual.setAttribute('width', width);
+        visual.setAttribute('height', depth);
+    }
+    
+    const physics = entity.querySelector('a-box');
+    if (physics) {
+        physics.setAttribute('width', width);
+        physics.setAttribute('depth', depth);
+    }
+}
+
+/**
  * Démarre la session AR
  */
 export async function startARSession() {
     state.debug('Démarrage AR...');
 
     try {
+        // Vérifier le support du plane detection
+        const supportedFeatures = ['hit-test', 'dom-overlay'];
+        
+        // Ajouter plane-detection si supporté (Quest 3, iOS, etc.)
+        try {
+            const supported = await navigator.xr.isSessionSupported('immersive-ar');
+            if (supported) {
+                supportedFeatures.push('plane-detection');
+                console.log('📐 Plane detection requested');
+            }
+        } catch (e) {
+            console.log('Plane detection check failed:', e);
+        }
+
         const session = await navigator.xr.requestSession('immersive-ar', {
             requiredFeatures: ['local-floor'],
-            optionalFeatures: ['hit-test', 'dom-overlay'],
+            optionalFeatures: supportedFeatures,
             domOverlay: { root: document.getElementById('overlay') }
         });
+
+        // Vérifier si plane-detection a été activé
+        planeDetectionSupported = session.enabledFeatures?.includes('plane-detection') || false;
+        console.log('📐 Plane detection enabled:', planeDetectionSupported);
 
         state.setXRSession(session);
         state.sceneEl.renderer.xr.setSession(session);
@@ -77,7 +262,7 @@ export async function startARSession() {
 
         state.debug('AR OK! Read the instructions');
 
-        // Setup hit-test
+        // Setup hit-test et plane detection
         setTimeout(async () => {
             try {
                 const refSpace = state.sceneEl.renderer.xr.getReferenceSpace();
@@ -87,7 +272,11 @@ export async function startARSession() {
                 const hitSource = await session.requestHitTestSource({ space: viewer });
                 state.setHitTestSource(hitSource);
                 
-                state.debug('Hit-test OK!');
+                if (planeDetectionSupported) {
+                    state.debug('📐 Plane Detection + Hit-test OK!');
+                } else {
+                    state.debug('Hit-test OK! (No plane detection)');
+                }
             } catch (e) {
                 state.debug('Pas de hit-test');
             }
@@ -148,6 +337,11 @@ function xrLoop(time, frame) {
         } catch (e) {
             console.error("Hit test error:", e);
         }
+    }
+
+    // Plane Detection Processing
+    if (planeDetectionSupported && frame.detectedPlanes) {
+        processDetectedPlanes(frame);
     }
 
     // Collision checks
