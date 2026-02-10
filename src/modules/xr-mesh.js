@@ -1,5 +1,9 @@
 /**
- * Gestion de la session XR, contrôleurs et boucle principale
+ * Version alternative de XR avec MESH DETECTION
+ * Utilise mesh-detection au lieu de plane-detection
+ * Pour tester la différence avec le plane detection
+ * 
+ * Quest 3/Pro uniquement (mesh-detection non supporté sur Quest 2)
  */
 
 import * as state from './state.js';
@@ -10,8 +14,21 @@ import { toggleInventory, spawnObject } from './inventory.js';
 import { closeWelcomePanel, showARNotification } from './panels.js';
 import { handleCoffeeMachineClick } from './coffee.js';
 
+// Stockage des meshes détectés
+const detectedMeshes = new Map(); // XRMesh -> { entity, lastUpdate, stable }
+let meshDetectionSupported = false;
+
+// Configuration du mesh detection
+const MESH_CONFIG = {
+    stabilizationFrames: 5,     // Moins de frames car les meshes sont plus stables
+    updateThreshold: 0.01,      // Seuil de changement pour mettre à jour (mètres)
+    showDebugInfo: true,        // Afficher les infos de debug
+    showWireframe: true,        // Afficher le wireframe du mesh
+    meshOpacity: 0.15           // Opacité du mesh
+};
+
 /**
- * Ajoute une surface détectée
+ * Ajoute une surface détectée (hit-test fallback)
  */
 export function addSurface(x, y, z) {
     for (const s of state.surfaces) {
@@ -33,17 +50,297 @@ export function addSurface(x, y, z) {
 }
 
 /**
- * Démarre la session AR
+ * Traite les meshes détectés par WebXR
+ * Crée des visualisations 3D pour chaque mesh
  */
-export async function startARSession() {
-    state.debug('Démarrage AR...');
+function processDetectedMeshes(frame) {
+    const currentMeshes = frame.detectedMeshes;
+    if (!currentMeshes) return;
+    
+    // Supprimer les meshes qui n'existent plus
+    for (const [mesh, data] of detectedMeshes) {
+        if (!currentMeshes.has(mesh)) {
+            if (data.entity && data.entity.parentNode) {
+                data.entity.parentNode.removeChild(data.entity);
+            }
+            detectedMeshes.delete(mesh);
+            console.log('🔷 Mesh supprimé');
+        }
+    }
+    
+    // Traiter chaque mesh détecté
+    for (const mesh of currentMeshes) {
+        const existingData = detectedMeshes.get(mesh);
+        
+        if (existingData) {
+            // Mesh existant - incrémenter le compteur de stabilité
+            existingData.frameCount++;
+            
+            // Mettre à jour seulement si stable
+            if (existingData.stable) {
+                updateMeshEntity(mesh, existingData, frame);
+            } else if (existingData.frameCount >= MESH_CONFIG.stabilizationFrames) {
+                // Mesh maintenant stable - créer l'entité
+                existingData.stable = true;
+                existingData.entity = createMeshEntity(mesh, frame);
+                console.log('🔷 Mesh stabilisé:', mesh.semanticLabel || 'unknown');
+            }
+        } else {
+            // Nouveau mesh - commencer le compteur de stabilisation
+            detectedMeshes.set(mesh, {
+                entity: null,
+                frameCount: 1,
+                stable: false,
+                lastPosition: null,
+                lastVertexCount: 0
+            });
+        }
+    }
+}
+
+/**
+ * Crée une entité A-Frame pour visualiser un mesh détecté
+ * Utilise les vertices et indices du XRMesh
+ */
+function createMeshEntity(mesh, frame) {
+    const pose = frame.getPose(mesh.meshSpace, state.xrRefSpace);
+    if (!pose) return null;
+    
+    // Récupérer les données du mesh
+    const vertices = mesh.vertices;    // Float32Array
+    const indices = mesh.indices;       // Uint32Array
+    
+    if (!vertices || vertices.length < 9 || !indices || indices.length < 3) {
+        console.log('🔷 Mesh invalide - pas assez de données');
+        return null;
+    }
+    
+    // Position et rotation du mesh
+    const pos = pose.transform.position;
+    const rot = pose.transform.orientation;
+    
+    // Créer le conteneur
+    const entity = document.createElement('a-entity');
+    entity.classList.add('detected-mesh');
+    entity.dataset.semanticLabel = mesh.semanticLabel || 'unknown';
+    entity.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+    
+    // Appliquer la rotation
+    const quat = new THREE.Quaternion(rot.x, rot.y, rot.z, rot.w);
+    const euler = new THREE.Euler().setFromQuaternion(quat);
+    entity.setAttribute('rotation', `${THREE.MathUtils.radToDeg(euler.x)} ${THREE.MathUtils.radToDeg(euler.y)} ${THREE.MathUtils.radToDeg(euler.z)}`);
+    
+    // Créer la géométrie THREE.js à partir des vertices et indices
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
+    geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
+    geometry.computeVertexNormals();
+    
+    // Couleur selon le semantic label (si disponible)
+    let color = 0xff6600; // Orange par défaut pour mesh
+    let edgeColor = 0xff9900;
+    
+    if (mesh.semanticLabel) {
+        switch (mesh.semanticLabel.toLowerCase()) {
+            case 'floor':
+                color = 0x9b59b6;    // Violet
+                edgeColor = 0x8e44ad;
+                break;
+            case 'wall':
+                color = 0xe74c3c;    // Rouge
+                edgeColor = 0xc0392b;
+                break;
+            case 'ceiling':
+                color = 0x3498db;    // Bleu
+                edgeColor = 0x2980b9;
+                break;
+            case 'table':
+                color = 0x2ecc71;    // Vert
+                edgeColor = 0x27ae60;
+                break;
+            case 'desk':
+            case 'other':
+                color = 0xf39c12;    // Jaune-orange
+                edgeColor = 0xe67e22;
+                break;
+        }
+    }
+    
+    const material = new THREE.MeshBasicMaterial({
+        color: color,
+        transparent: true,
+        opacity: MESH_CONFIG.meshOpacity,
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+    
+    const meshObj = new THREE.Mesh(geometry, material);
+    entity.setObject3D('mesh-visual', meshObj);
+    
+    // Wireframe pour mieux voir la structure du mesh
+    if (MESH_CONFIG.showWireframe) {
+        const wireframeMaterial = new THREE.MeshBasicMaterial({
+            color: edgeColor,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.4
+        });
+        const wireframe = new THREE.Mesh(geometry.clone(), wireframeMaterial);
+        entity.setObject3D('mesh-wireframe', wireframe);
+    }
+    
+    // Edges pour les contours
+    const edgesGeometry = new THREE.EdgesGeometry(geometry, 30); // 30 degrés threshold
+    const edgesMaterial = new THREE.LineBasicMaterial({ 
+        color: edgeColor,
+        linewidth: 2
+    });
+    const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
+    entity.setObject3D('mesh-edges', edges);
+    
+    // Label de debug (optionnel)
+    if (MESH_CONFIG.showDebugInfo) {
+        // Calculer le bounding box pour le centre
+        geometry.computeBoundingBox();
+        const center = new THREE.Vector3();
+        geometry.boundingBox.getCenter(center);
+        
+        const vertCount = vertices.length / 3;
+        const triCount = indices.length / 3;
+        
+        const label = document.createElement('a-text');
+        label.setAttribute('value', `${mesh.semanticLabel || 'mesh'}\\n${vertCount} verts\\n${triCount} tris`);
+        label.setAttribute('align', 'center');
+        label.setAttribute('position', `${center.x} ${center.y + 0.2} ${center.z}`);
+        label.setAttribute('scale', '0.3 0.3 0.3');
+        label.setAttribute('color', `#${color.toString(16).padStart(6, '0')}`);
+        label.setAttribute('look-at', '[camera]'); // Toujours face à la caméra
+        entity.appendChild(label);
+    }
+    
+    state.sceneEl.appendChild(entity);
+    
+    console.log(`🔷 Mesh créé: ${mesh.semanticLabel || 'unknown'} (${vertices.length/3} vertices, ${indices.length/3} triangles)`);
+    
+    return entity;
+}
+
+/**
+ * Met à jour une entité de mesh existante
+ * Vérifie si le changement est significatif avant de mettre à jour
+ */
+function updateMeshEntity(mesh, data, frame) {
+    if (!data.entity) return;
+    
+    const pose = frame.getPose(mesh.meshSpace, state.xrRefSpace);
+    if (!pose) return;
+    
+    const pos = pose.transform.position;
+    
+    // Vérifier si le changement de position est significatif
+    if (data.lastPosition) {
+        const dx = Math.abs(pos.x - data.lastPosition.x);
+        const dy = Math.abs(pos.y - data.lastPosition.y);
+        const dz = Math.abs(pos.z - data.lastPosition.z);
+        
+        // Ignorer les petits changements pour éviter les saccades
+        if (dx < MESH_CONFIG.updateThreshold && 
+            dy < MESH_CONFIG.updateThreshold && 
+            dz < MESH_CONFIG.updateThreshold) {
+            // Pas de changement de position, mais vérifier si le mesh a changé
+            const currentVertexCount = mesh.vertices ? mesh.vertices.length : 0;
+            if (currentVertexCount === data.lastVertexCount) {
+                return; // Rien n'a changé
+            }
+        }
+    }
+    
+    // Mettre à jour la position
+    data.entity.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+    data.lastPosition = { x: pos.x, y: pos.y, z: pos.z };
+    
+    // Mettre à jour la rotation
+    const rot = pose.transform.orientation;
+    const quat = new THREE.Quaternion(rot.x, rot.y, rot.z, rot.w);
+    const euler = new THREE.Euler().setFromQuaternion(quat);
+    data.entity.setAttribute('rotation', `${THREE.MathUtils.radToDeg(euler.x)} ${THREE.MathUtils.radToDeg(euler.y)} ${THREE.MathUtils.radToDeg(euler.z)}`);
+    
+    // Si le mesh a changé significativement, recréer la géométrie
+    const vertices = mesh.vertices;
+    const indices = mesh.indices;
+    
+    if (!vertices || !indices) return;
+    
+    const currentVertexCount = vertices.length;
+    if (currentVertexCount !== data.lastVertexCount) {
+        data.lastVertexCount = currentVertexCount;
+        
+        // Nouvelle géométrie
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
+        geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
+        geometry.computeVertexNormals();
+        
+        // Mettre à jour le mesh principal
+        const visualMesh = data.entity.getObject3D('mesh-visual');
+        if (visualMesh) {
+            visualMesh.geometry.dispose();
+            visualMesh.geometry = geometry;
+        }
+        
+        // Mettre à jour le wireframe
+        const wireframe = data.entity.getObject3D('mesh-wireframe');
+        if (wireframe) {
+            wireframe.geometry.dispose();
+            wireframe.geometry = geometry.clone();
+        }
+        
+        // Mettre à jour les edges
+        const edges = data.entity.getObject3D('mesh-edges');
+        if (edges) {
+            const newEdgesGeometry = new THREE.EdgesGeometry(geometry, 30);
+            edges.geometry.dispose();
+            edges.geometry = newEdgesGeometry;
+        }
+        
+        console.log(`🔷 Mesh mis à jour: ${vertices.length/3} vertices`);
+    }
+}
+
+/**
+ * Démarre la session AR avec MESH DETECTION
+ */
+export async function startARSessionMesh() {
+    state.debug('Démarrage AR (Mesh Detection)...');
 
     try {
+        // Liste des features à demander
+        const supportedFeatures = ['hit-test', 'dom-overlay'];
+        
+        // Ajouter mesh-detection (Quest 3/Pro uniquement)
+        try {
+            const supported = await navigator.xr.isSessionSupported('immersive-ar');
+            if (supported) {
+                supportedFeatures.push('mesh-detection');
+                console.log('🔷 Mesh detection requested');
+            }
+        } catch (e) {
+            console.log('Mesh detection check failed:', e);
+        }
+
         const session = await navigator.xr.requestSession('immersive-ar', {
             requiredFeatures: ['local-floor'],
-            optionalFeatures: ['hit-test', 'dom-overlay'],
+            optionalFeatures: supportedFeatures,
             domOverlay: { root: document.getElementById('overlay') }
         });
+
+        // Vérifier si mesh-detection a été activé
+        meshDetectionSupported = session.enabledFeatures?.includes('mesh-detection') || false;
+        console.log('🔷 Mesh detection enabled:', meshDetectionSupported);
+        
+        if (!meshDetectionSupported) {
+            state.debug('⚠️ Mesh detection NON supporté! (Quest 3/Pro requis)');
+        }
 
         state.setXRSession(session);
         state.sceneEl.renderer.xr.setSession(session);
@@ -75,7 +372,7 @@ export async function startARSession() {
         window.ctrl1.addEventListener('selectstart', () => grab(window.ctrl1));
         window.ctrl1.addEventListener('selectend', release);
 
-        state.debug('AR OK! Read the instructions');
+        state.debug('AR OK! (Mesh Detection Mode)');
 
         // Setup hit-test
         setTimeout(async () => {
@@ -87,12 +384,16 @@ export async function startARSession() {
                 const hitSource = await session.requestHitTestSource({ space: viewer });
                 state.setHitTestSource(hitSource);
                 
-                state.debug('Hit-test OK!');
+                if (meshDetectionSupported) {
+                    state.debug('🔷 Mesh Detection + Hit-test OK!');
+                } else {
+                    state.debug('Hit-test OK! (No mesh detection - Quest 3/Pro required)');
+                }
             } catch (e) {
                 state.debug('Pas de hit-test');
             }
 
-            session.requestAnimationFrame(xrLoop);
+            session.requestAnimationFrame(xrLoopMesh);
         }, 500);
 
         return session;
@@ -106,11 +407,11 @@ export async function startARSession() {
 }
 
 /**
- * Boucle principale XR
+ * Boucle principale XR (version Mesh Detection)
  */
-function xrLoop(time, frame) {
+function xrLoopMesh(time, frame) {
     if (!state.xrSession) return;
-    state.xrSession.requestAnimationFrame(xrLoop);
+    state.xrSession.requestAnimationFrame(xrLoopMesh);
 
     if (!frame || !state.xrRefSpace) {
         state.setXRRefSpace(state.sceneEl.renderer.xr.getReferenceSpace());
@@ -148,6 +449,11 @@ function xrLoop(time, frame) {
         } catch (e) {
             console.error("Hit test error:", e);
         }
+    }
+
+    // Mesh Detection Processing (au lieu de Plane Detection)
+    if (meshDetectionSupported && frame.detectedMeshes) {
+        processDetectedMeshes(frame);
     }
 
     // Collision checks
@@ -406,5 +712,40 @@ function handleControllerInteraction(controller) {
         const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -2)];
         line.geometry.setFromPoints(points);
         line.geometry.attributes.position.needsUpdate = true;
+    }
+}
+
+/**
+ * Fonction utilitaire pour obtenir des stats sur les meshes détectés
+ */
+export function getMeshStats() {
+    let totalVertices = 0;
+    let totalTriangles = 0;
+    
+    for (const [mesh] of detectedMeshes) {
+        if (mesh.vertices) totalVertices += mesh.vertices.length / 3;
+        if (mesh.indices) totalTriangles += mesh.indices.length / 3;
+    }
+    
+    return {
+        meshCount: detectedMeshes.size,
+        totalVertices,
+        totalTriangles,
+        supported: meshDetectionSupported
+    };
+}
+
+/**
+ * Toggle pour afficher/cacher tous les meshes
+ */
+export function toggleMeshVisibility(visible = undefined) {
+    for (const [, data] of detectedMeshes) {
+        if (data.entity && data.entity.object3D) {
+            if (visible === undefined) {
+                data.entity.object3D.visible = !data.entity.object3D.visible;
+            } else {
+                data.entity.object3D.visible = visible;
+            }
+        }
     }
 }

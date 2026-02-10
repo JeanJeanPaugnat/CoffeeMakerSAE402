@@ -1,36 +1,33 @@
 /**
  * SAE 402 - Holo Barista
- * Point d'entrée principal de l'application
+ * VERSION MESH DETECTION - Pour tester le mesh detection
  * 
- * Structure des modules :
- * - state.js       : État global partagé
- * - audio.js       : Système audio
- * - coffee.js      : Machine à café et tasses
- * - inventory.js   : Menu HUD et spawn d'objets
- * - panels.js      : Panneaux UI (welcome, notifications)
- * - customers.js   : Gestion des clients
- * - grab.js        : Système de grab/release
- * - trash.js       : Système de poubelles
- * - cleaning.js    : Système de nettoyage (balai)
- * - xr.js          : Session XR et boucle principale
+ * Ce fichier est identique à main.js mais utilise mesh-detection
+ * au lieu de plane-detection pour comparer les deux approches.
+ * 
+ * /!\ Quest 3 ou Quest Pro requis pour mesh-detection!
  */
 
 import 'aframe';
 import 'aframe-extras';
 import 'aframe-physics-system';
 
-// Import des modules
+// Import des modules - utilise xr-mesh au lieu de xr
 import * as state from './modules/state.js';
 import { initCoffeeAudio } from './modules/audio.js';
 import { createHUDInventory } from './modules/inventory.js';
 import { createWelcomePanel, setOnWelcomePanelClosed } from './modules/panels.js';
 import { spawnCustomer } from './modules/customers.js';
 import { initStains, startCleaningLoop } from './modules/cleaning.js';
-import { startARSession } from './modules/xr.js';
+import { startARSessionMesh, getMeshStats, toggleMeshVisibility } from './modules/xr-mesh.js';
 
 /* global THREE */
 
-console.log('☕ SAE 402 - Chargement...');
+console.log('☕ SAE 402 - MESH DETECTION MODE - Chargement...');
+
+// Exposer les fonctions utilitaires globalement pour debug
+window.getMeshStats = getMeshStats;
+window.toggleMeshVisibility = toggleMeshVisibility;
 
 /**
  * Initialisation de l'application
@@ -63,7 +60,7 @@ window.addEventListener('load', () => {
             console.log('Creating cursor manually...');
             cursorEl = document.createElement('a-ring');
             cursorEl.id = 'cursor';
-            cursorEl.setAttribute('color', 'green');
+            cursorEl.setAttribute('color', 'orange'); // Orange pour indiquer mode mesh
             cursorEl.setAttribute('radius-inner', '0.05');
             cursorEl.setAttribute('radius-outer', '0.08');
             cursorEl.setAttribute('rotation', '-90 0 0');
@@ -75,7 +72,7 @@ window.addEventListener('load', () => {
         // Initialisation de l'état global
         state.setSceneElements(sceneEl, cubeEl, cursorEl, debugEl);
 
-        if (debugEl) debugEl.textContent = 'Prêt!';
+        if (debugEl) debugEl.textContent = 'Mode MESH DETECTION - Prêt!';
 
         // Initialisation de l'audio
         initCoffeeAudio();
@@ -85,7 +82,7 @@ window.addEventListener('load', () => {
 
         // --- GESTIONNAIRE DU BOUTON START ---
         startBtn.onclick = async () => {
-            console.log('☕ Start button clicked!');
+            console.log('☕ Start button clicked! (MESH DETECTION MODE)');
 
             // 1. Cacher la landing page
             if (landingPage) {
@@ -109,8 +106,8 @@ window.addEventListener('load', () => {
                     sceneEl.style.display = 'block';
                 }
 
-                // Démarrer la session AR
-                const session = await startARSession();
+                // Démarrer la session AR avec MESH DETECTION
+                const session = await startARSessionMesh();
                 
                 if (session) {
                     // Créer le panneau de bienvenue
@@ -122,6 +119,14 @@ window.addEventListener('load', () => {
                     // Initialiser les taches et le système de nettoyage
                     initStains();
                     startCleaningLoop();
+
+                    // Log mesh stats périodiquement
+                    setInterval(() => {
+                        const stats = getMeshStats();
+                        if (stats.meshCount > 0) {
+                            console.log(`🔷 Mesh Stats: ${stats.meshCount} meshes, ${stats.totalVertices} verts, ${stats.totalTriangles} tris`);
+                        }
+                    }, 5000);
 
                     // Backup spawn de client après 10 secondes
                     setTimeout(() => {
