@@ -4,7 +4,7 @@
 
 import * as state from './state.js';
 import { playCoffeeSound } from './audio.js';
-import { deliverCoffee } from './customers.js';
+import { onCoffeeCreated } from './wrist-tablet.js';
 
 /**
  * Fait apparaître une tasse de café à côté de la machine
@@ -33,22 +33,14 @@ export function spawnCoffeeCup(machineEntity) {
     cup.id = `coffee-cup-${Date.now()}`;
     cup.dataset.isCoffee = 'true';
 
-    // Collision avec les clients
-    cup.addEventListener('collide', (e) => {
-        const collidedEl = e.detail.body.el;
-        if (!collidedEl) return;
-
-        if (collidedEl.classList.contains('customer')) {
-            console.log('☕ CUP HIT CUSTOMER!');
-            deliverCoffee(collidedEl, cup);
-        }
-    });
-
     state.sceneEl.appendChild(cup);
     state.spawnedObjects.push(cup);
 
     console.log('☕ Tasse de café créée à:', cupPos);
     state.debug('☕ Café prêt!');
+    
+    // Notifier la tablette qu'un café a été créé
+    onCoffeeCreated();
 }
 
 /**

@@ -5,7 +5,6 @@
 import * as state from './state.js';
 import { grab, release, updateGrabbedObject, rotateGrabbedObject } from './grab.js';
 import { checkTrashcanCollisions } from './trash.js';
-import { checkCoffeeDelivery, removeCustomer } from './customers.js';
 import { toggleInventory, spawnObject } from './inventory.js';
 import { closeWelcomePanel, showARNotification } from './panels.js';
 import { handleCoffeeMachineClick } from './coffee.js';
@@ -152,7 +151,6 @@ function xrLoop(time, frame) {
 
     // Collision checks
     checkTrashcanCollisions();
-    checkCoffeeDelivery();
 
     // Process controller inputs
     processControllerInputs();
@@ -203,12 +201,12 @@ function processControllerInputs() {
             }
         }
 
-        // RIGHT CONTROLLER - A button (give coffee)
+        // RIGHT CONTROLLER - A button (release object)
         if (source.handedness === 'right' && source.gamepad) {
-            // Debug
+            // Debug button presses
             for (let bi = 0; bi < source.gamepad.buttons.length; bi++) {
                 if (source.gamepad.buttons[bi].pressed) {
-                    state.debug(`BTN ${bi} | Grab:${state.grabbed} | Cup:${state.currentGrabbedEl ? 'yes' : 'no'} | Cust:${state.customers.length}`);
+                    state.debug(`BTN ${bi} | Grab:${state.grabbed} | Obj:${state.currentGrabbedEl ? state.currentGrabbedEl.id : 'none'}`);
                 }
             }
 
@@ -217,39 +215,12 @@ function processControllerInputs() {
             if (aBtn && aBtn.pressed && !state.giveCoffeeLock) {
                 state.debug(`A pressed! Grab:${state.grabbed}`);
 
+                // Le bouton A peut être utilisé pour lâcher l'objet
                 if (state.grabbed && state.currentGrabbedEl) {
-                    const isCoffee =
-                        (state.currentGrabbedEl.classList && state.currentGrabbedEl.classList.contains('coffee-cup')) ||
-                        (state.currentGrabbedEl.dataset && state.currentGrabbedEl.dataset.isCoffee === 'true') ||
-                        (state.currentGrabbedEl.id && state.currentGrabbedEl.id.includes('coffee-cup'));
-
-                    state.debug(`Coffee:${isCoffee} Cust:${state.customers.length}`);
-
-                    if (isCoffee && state.customers.length > 0) {
-                        state.setGiveCoffeeLock(true);
-                        console.log('✅ COFFEE GIVEN BY BUTTON A!');
-                        showARNotification('✅ THANKS! Perfect coffee!', 3000);
-                        state.debug('✅ Café livré!');
-
-                        // Remove cup
-                        const cupIdx = state.spawnedObjects.indexOf(state.currentGrabbedEl);
-                        if (cupIdx > -1) state.spawnedObjects.splice(cupIdx, 1);
-                        if (state.currentGrabbedEl.body && state.currentGrabbedEl.body.world) {
-                            state.currentGrabbedEl.body.world.removeBody(state.currentGrabbedEl.body);
-                        }
-                        if (state.currentGrabbedEl.parentNode) state.currentGrabbedEl.parentNode.removeChild(state.currentGrabbedEl);
-
-                        // Reset grab state
-                        state.setGrabbed(false);
-                        state.setGrabController(null);
-                        state.setCurrentGrabbedEl(null);
-
-                        // Remove customer
-                        const customer = state.customers[0];
-                        removeCustomer(customer);
-
-                        setTimeout(() => { state.setGiveCoffeeLock(false); }, 500);
-                    }
+                    state.setGiveCoffeeLock(true);
+                    release();
+                    showARNotification('Objet lâché!', 1000);
+                    setTimeout(() => { state.setGiveCoffeeLock(false); }, 500);
                 }
             }
 
