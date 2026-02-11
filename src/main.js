@@ -24,7 +24,7 @@ import * as state from './modules/state.js';
 import { initCoffeeAudio } from './modules/audio.js';
 import { createHUDInventory } from './modules/inventory.js';
 import { createWelcomePanel, setOnWelcomePanelClosed } from './modules/panels.js';
-import { createWristTablet } from './modules/wrist-tablet.js';
+import { createWristTablet, initOrders, createDebugPanel } from './modules/wrist-tablet.js';
 import { initStains, startCleaningLoop } from './modules/cleaning.js';
 import { startARSession } from './modules/xr.js';
 
@@ -113,6 +113,12 @@ window.addEventListener('load', () => {
                 const session = await startARSession();
                 
                 if (session) {
+                    // Initialiser les commandes dès maintenant (avant même la fermeture du welcome panel)
+                    initOrders();
+                    
+                    // Créer le panneau de debug VR (pour diagnostiquer)
+                    createDebugPanel();
+                    
                     // Créer le panneau de bienvenue
                     createWelcomePanel();
 

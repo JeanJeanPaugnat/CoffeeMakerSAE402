@@ -36,11 +36,18 @@ export function spawnCoffeeCup(machineEntity) {
     state.sceneEl.appendChild(cup);
     state.spawnedObjects.push(cup);
 
-    console.log('☕ Tasse de café créée à:', cupPos);
+    console.log('☕ Tasse de café créée');
+    console.log('☕ spawnedObjects count:', state.spawnedObjects.length);
     state.debug('☕ Café prêt!');
     
-    // Notifier la tablette qu'un café a été créé
-    onCoffeeCreated();
+    // Notifier le panneau de commandes
+    console.log('☕ About to call onCoffeeCreated...');
+    try {
+        onCoffeeCreated();
+        console.log('☕ onCoffeeCreated called successfully');
+    } catch (e) {
+        console.error('❌ Error in onCoffeeCreated:', e);
+    }
 }
 
 /**
@@ -48,7 +55,10 @@ export function spawnCoffeeCup(machineEntity) {
  * @param {Element} machineEntity - L'entité de la machine
  */
 export function handleCoffeeMachineClick(machineEntity) {
-    if (state.coffeeMachineLock) return;
+    if (state.coffeeMachineLock) {
+        console.log('[DEBUG] coffeeMachineLock is TRUE, blocking');
+        return;
+    }
     state.setCoffeeMachineLock(true);
 
     console.log('☕ Machine à café activée!');
@@ -58,7 +68,14 @@ export function handleCoffeeMachineClick(machineEntity) {
 
     // Attendre 1.5 secondes puis faire apparaître la tasse
     setTimeout(() => {
-        spawnCoffeeCup(machineEntity);
+        try {
+            spawnCoffeeCup(machineEntity);
+        } catch (e) {
+            console.error('❌ Error in spawnCoffeeCup:', e);
+        }
+        // TOUJOURS remettre le lock à false
         state.setCoffeeMachineLock(false);
+        console.log('[DEBUG] coffeeMachineLock reset to FALSE');
+        state.debug('✅ Prêt pour un autre café!');
     }, 1500);
 }

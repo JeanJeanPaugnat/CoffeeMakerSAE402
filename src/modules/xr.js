@@ -228,6 +228,9 @@ function processControllerInputs() {
             const bBtn = source.gamepad.buttons[5];
 
             if (bBtn && bBtn.pressed && !state.coffeeMachineLock) {
+                console.log('[DEBUG] B pressed, searching for coffee machine...');
+                state.debug('B: Cherche machine...');
+                
                 const rightCtrl = window.rightController;
                 if (rightCtrl) {
                     const tempMatrix = new THREE.Matrix4();
@@ -239,10 +242,14 @@ function processControllerInputs() {
                     raycaster.far = 5.0;
 
                     const coffeeMachines = [];
+                    console.log('[DEBUG] Checking', state.spawnedObjects.length, 'spawned objects');
+                    
                     state.spawnedObjects.forEach(obj => {
                         if (obj && obj.object3D) {
                             const model = obj.getAttribute('gltf-model');
+                            console.log('[DEBUG] Object model:', model);
                             if (model && model.includes('CoffeeMachine')) {
+                                console.log('[DEBUG] Found CoffeeMachine!');
                                 obj.object3D.traverse(child => {
                                     if (child.isMesh) {
                                         child.el = obj;
@@ -253,15 +260,28 @@ function processControllerInputs() {
                         }
                     });
 
+                    console.log('[DEBUG] Coffee machines found:', coffeeMachines.length);
+                    state.debug(`Machines: ${coffeeMachines.length}`);
+                    
                     const intersects = raycaster.intersectObjects(coffeeMachines);
+                    console.log('[DEBUG] Intersections:', intersects.length);
 
                     if (intersects.length > 0) {
                         const hitEntity = intersects[0].object.el;
                         if (hitEntity) {
+                            console.log('[DEBUG] Hit! Calling handleCoffeeMachineClick');
+                            state.debug('☕ Machine détectée!');
                             handleCoffeeMachineClick(hitEntity);
                         }
+                    } else {
+                        state.debug('❌ Pas de machine visée');
                     }
+                } else {
+                    console.log('[DEBUG] No rightCtrl');
+                    state.debug('❌ Pas de controller droit');
                 }
+            } else if (bBtn && bBtn.pressed && state.coffeeMachineLock) {
+                state.debug('⏳ Café en cours...');
             }
         }
 
