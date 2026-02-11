@@ -8,11 +8,19 @@ import { showARNotification } from './panels.js';
 
 // --- ÉTAT ---
 let isInitialized = false;
-let coffeesCreatedCount = 0;
-let requiredCoffees = 3;
+let itemsCreatedCount = 0;
 let orderCompleted = false;
 let totalScore = 0;
 let totalOrdersCompleted = 0;
+
+// --- COMMANDE ACTUELLE ---
+let currentOrder = {
+    type: 'coffee',
+    icon: '☕',
+    label: 'Coffee',
+    required: 3,
+    points: 10
+};
 
 // --- PANNEAU VR ---
 let ordersPanel = null;
@@ -26,8 +34,19 @@ const MAX_VR_LOGS = 8;
 
 // --- TYPES DE TÂCHES ---
 export const TASK_TYPES = {
-    COFFEE: { id: 'coffee', label: 'Coffee', icon: '☕', points: 10 }
+    COFFEE: { id: 'coffee', label: 'Coffee', icon: '☕', points: 10 },
+    DONUT: { id: 'donut', label: 'Donut', icon: '🍩', points: 15 }
 };
+
+// --- COMMANDES POSSIBLES ---
+const POSSIBLE_ORDERS = [
+    { type: 'coffee', icon: '☕', label: 'Coffee', required: 2, points: 10 },
+    { type: 'coffee', icon: '☕', label: 'Coffee', required: 3, points: 10 },
+    { type: 'coffee', icon: '☕', label: 'Coffee', required: 4, points: 10 },
+    { type: 'donut', icon: '🍩', label: 'Donut', required: 1, points: 15 },
+    { type: 'donut', icon: '🍩', label: 'Donut', required: 2, points: 15 },
+    { type: 'donut', icon: '🍩', label: 'Donut', required: 3, points: 15 }
+];
 
 /**
  * Ajoute un log visible en VR
@@ -71,12 +90,17 @@ export function generateNewOrders(count = 3) {
 }
 
 /**
- * Reset la commande en cours
+ * Reset la commande en cours avec une nouvelle commande aléatoire
  */
 function resetOrder() {
-    coffeesCreatedCount = 0;
+    itemsCreatedCount = 0;
     orderCompleted = false;
-    vrLog(`📋 New order: ${requiredCoffees} coffees`);
+    
+    // Choisir une commande aléatoire
+    const randomIndex = Math.floor(Math.random() * POSSIBLE_ORDERS.length);
+    currentOrder = { ...POSSIBLE_ORDERS[randomIndex] };
+    
+    vrLog(`📋 ${currentOrder.required}x ${currentOrder.icon}`);
     updatePanel();
 }
 
@@ -205,15 +229,13 @@ function updatePanel() {
     const lines = [];
     
     // Afficher la commande avec progrès
-    if (orderCompleted) {
-        lines.push(`🟢 ✓ ☕ Coffee (${requiredCoffees}/${requiredCoffees})`);
-    } else {
-        lines.push(`🟡 ○ ☕ Coffee (${coffeesCreatedCount}/${requiredCoffees})`);
-    }
+    const check = orderCompleted ? '✓' : '○';
+    const color = orderCompleted ? '🟢' : '🟡';
+    lines.push(`${color} ${check} ${currentOrder.icon} ${currentOrder.label} (${itemsCreatedCount}/${currentOrder.required})`);
     
     // Stats
     lines.push(`Score: ${totalScore} pts`);
-    lines.push(`Orders done: ${totalOrdersCompleted}`);
+    lines.push(`Orders: ${totalOrdersCompleted}`);
     
     ordersPanelText.setAttribute('value', lines.join('\\n'));
 }
@@ -222,41 +244,62 @@ function updatePanel() {
  * Appelé quand un café est créé
  */
 export function onCoffeeCreated() {
-    coffeesCreatedCount++;
-    vrLog(`☕ Coffee ${coffeesCreatedCount}/${requiredCoffees}`);
-    
+    onItemCreated('coffee');
+}
+
+/**
+ * Appelé quand un donut est créé
+ */
+export function onDonutCreated() {
+    onItemCreated('donut');
+}
+
+/**
+ * Logique commune pour tous les items
+ */
+function onItemCreated(itemType) {
     // Si pas initialisé, initialiser maintenant
     if (!isInitialized) {
         vrLog('⚠️ Not init, fixing...');
         initOrders();
     }
     
-    // Ajouter les points pour chaque café
-    totalScore += TASK_TYPES.COFFEE.points;
-    vrLog(`+${TASK_TYPES.COFFEE.points} pts`);
+    // Vérifier si c'est le bon type d'item
+    if (currentOrder.type !== itemType) {
+        vrLog(`❌ Wrong! Need ${currentOrder.icon}`);
+        showARNotification(`❌ Besoin de ${currentOrder.icon} pas de ${itemType === 'coffee' ? '☕' : '🍩'}`, 2000);
+        return;
+    }
+    
+    itemsCreatedCount++;
+    vrLog(`${currentOrder.icon} ${itemsCreatedCount}/${currentOrder.required}`);
+    
+    // Ajouter les points pour chaque item
+    totalScore += currentOrder.points;
+    vrLog(`+${currentOrder.points} pts`);
     
     // Mettre à jour l'affichage
     updatePanel();
     
     // Vérifier si la commande est complète
-    if (coffeesCreatedCount >= requiredCoffees && !orderCompleted) {
+    if (itemsCreatedCount >= currentOrder.required && !orderCompleted) {
         orderCompleted = true;
         totalOrdersCompleted++;
         
         vrLog(`✅ ORDER COMPLETE!`);
-        vrLog(`Total: ${totalOrdersCompleted} orders`);
+        vrLog(`Total: ${totalOrdersCompleted}`);
         showARNotification(`🎉 Commande terminée! ${totalScore} pts`, 3000);
         
         updatePanel();
         
-        // Nouvelle commande après 3 secondes
+        // Nouvelle commande après 4 secondes
         setTimeout(() => {
-            vrLog(`📋 New order incoming...`);
+            vrLog(`📋 New order...`);
             showARNotification('📋 Nouvelle commande!', 2000);
             resetOrder();
         }, 4000);
     } else {
-        showARNotification(`☕ ${coffeesCreatedCount}/${requiredCoffees}`, 1500);
+        showARNotification(`${currentOrder.icon} ${itemsCreatedCount}/${currentOrder.required}`, 1500);
     }
 }
 
@@ -271,7 +314,7 @@ export function getScore() {
  * Réinitialise tout
  */
 export function resetOrders() {
-    coffeesCreatedCount = 0;
+    itemsCreatedCount = 0;
     orderCompleted = false;
     totalScore = 0;
     totalOrdersCompleted = 0;

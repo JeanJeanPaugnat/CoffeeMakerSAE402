@@ -8,6 +8,7 @@ import { checkTrashcanCollisions } from './trash.js';
 import { toggleInventory, spawnObject } from './inventory.js';
 import { closeWelcomePanel, showARNotification } from './panels.js';
 import { handleCoffeeMachineClick } from './coffee.js';
+import { handleDonutMachineClick } from './donut.js';
 
 /**
  * Ajoute une surface détectée
@@ -224,11 +225,11 @@ function processControllerInputs() {
                 }
             }
 
-            // B button - Coffee Machine
+            // B button - Coffee Machine / Donut Box
             const bBtn = source.gamepad.buttons[5];
 
             if (bBtn && bBtn.pressed && !state.coffeeMachineLock) {
-                console.log('[DEBUG] B pressed, searching for coffee machine...');
+                console.log('[DEBUG] B pressed, searching for machines...');
                 state.debug('B: Cherche machine...');
                 
                 const rightCtrl = window.rightController;
@@ -241,37 +242,56 @@ function processControllerInputs() {
                     raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
                     raycaster.far = 5.0;
 
-                    const coffeeMachines = [];
+                    const machines = [];
                     console.log('[DEBUG] Checking', state.spawnedObjects.length, 'spawned objects');
                     
                     state.spawnedObjects.forEach(obj => {
                         if (obj && obj.object3D) {
                             const model = obj.getAttribute('gltf-model');
-                            console.log('[DEBUG] Object model:', model);
+                            
                             if (model && model.includes('CoffeeMachine')) {
                                 console.log('[DEBUG] Found CoffeeMachine!');
                                 obj.object3D.traverse(child => {
                                     if (child.isMesh) {
                                         child.el = obj;
-                                        coffeeMachines.push(child);
+                                        child.machineType = 'coffee';
+                                        machines.push(child);
+                                    }
+                                });
+                            } else if (model && model.includes('BoxDonuts')) {
+                                console.log('[DEBUG] Found BoxDonuts!');
+                                obj.object3D.traverse(child => {
+                                    if (child.isMesh) {
+                                        child.el = obj;
+                                        child.machineType = 'donut';
+                                        machines.push(child);
                                     }
                                 });
                             }
                         }
                     });
 
-                    console.log('[DEBUG] Coffee machines found:', coffeeMachines.length);
-                    state.debug(`Machines: ${coffeeMachines.length}`);
+                    console.log('[DEBUG] Machines found:', machines.length);
+                    state.debug(`Machines: ${machines.length}`);
                     
-                    const intersects = raycaster.intersectObjects(coffeeMachines);
+                    const intersects = raycaster.intersectObjects(machines);
                     console.log('[DEBUG] Intersections:', intersects.length);
 
                     if (intersects.length > 0) {
-                        const hitEntity = intersects[0].object.el;
+                        const hitMesh = intersects[0].object;
+                        const hitEntity = hitMesh.el;
+                        const machineType = hitMesh.machineType;
+                        
                         if (hitEntity) {
-                            console.log('[DEBUG] Hit! Calling handleCoffeeMachineClick');
-                            state.debug('☕ Machine détectée!');
-                            handleCoffeeMachineClick(hitEntity);
+                            if (machineType === 'coffee') {
+                                console.log('[DEBUG] Hit Coffee Machine!');
+                                state.debug('☕ Coffee Machine!');
+                                handleCoffeeMachineClick(hitEntity);
+                            } else if (machineType === 'donut') {
+                                console.log('[DEBUG] Hit Donut Box!');
+                                state.debug('🍩 Donut Box!');
+                                handleDonutMachineClick(hitEntity);
+                            }
                         }
                     } else {
                         state.debug('❌ Pas de machine visée');
@@ -281,7 +301,7 @@ function processControllerInputs() {
                     state.debug('❌ Pas de controller droit');
                 }
             } else if (bBtn && bBtn.pressed && state.coffeeMachineLock) {
-                state.debug('⏳ Café en cours...');
+                state.debug('⏳ En cours...');
             }
         }
 
