@@ -3,6 +3,7 @@
  */
 
 import * as state from './state.js';
+import { createSpeakerUI } from './speaker.js';
 
 /**
  * Configuration des items disponibles dans le store
@@ -257,6 +258,32 @@ export function spawnObject(type, color, model, customScale) {
     if (model && model.includes('Trashcan')) {
         entity.classList.add('trashcan');
         state.trashcans.push(entity);
+    }
+    
+    // Si c'est un speaker, créer l'interface de musique
+    if (model && model.includes('BassSpeakers')) {
+        entity.classList.add('speaker');
+        console.log('🔊 Speaker spawned, setting up UI...');
+        state.debug('🔊 Speaker placé!');
+        
+        // Attendre que le modèle soit chargé pour créer l'UI
+        entity.addEventListener('model-loaded', () => {
+            console.log('🔊 Speaker model loaded event fired');
+            state.debug('🔊 Model loaded!');
+            createSpeakerUI(entity);
+        });
+        
+        // Fallback: créer l'UI après un délai si model-loaded ne se déclenche pas
+        setTimeout(() => {
+            console.log('🔊 Checking for speaker UI after timeout...');
+            if (!entity.querySelector('#speaker-ui')) {
+                console.log('🔊 Fallback: creating speaker UI after timeout');
+                state.debug('🔊 Fallback UI creation');
+                createSpeakerUI(entity);
+            } else {
+                console.log('🔊 Speaker UI already exists');
+            }
+        }, 2000);
     }
 
     state.sceneEl.appendChild(entity);

@@ -9,6 +9,7 @@ import { toggleInventory, spawnObject } from './inventory.js';
 import { closeWelcomePanel, showARNotification } from './panels.js';
 import { handleCoffeeMachineClick } from './coffee.js';
 import { handleDonutMachineClick } from './donut.js';
+import { toggleSpeakerPlay, nextTrack, prevTrack, selectTrack } from './speaker.js';
 
 /**
  * Ajoute une surface détectée
@@ -267,6 +268,15 @@ function processControllerInputs() {
                                         machines.push(child);
                                     }
                                 });
+                            } else if (model && model.includes('BassSpeakers')) {
+                                console.log('[DEBUG] Found Speaker!');
+                                obj.object3D.traverse(child => {
+                                    if (child.isMesh) {
+                                        child.el = obj;
+                                        child.machineType = 'speaker';
+                                        machines.push(child);
+                                    }
+                                });
                             }
                         }
                     });
@@ -291,6 +301,10 @@ function processControllerInputs() {
                                 console.log('[DEBUG] Hit Donut Box!');
                                 state.debug('🍩 Donut Box!');
                                 handleDonutMachineClick(hitEntity);
+                            } else if (machineType === 'speaker') {
+                                console.log('[DEBUG] Hit Speaker!');
+                                state.debug('🔊 Speaker! Toggle music');
+                                toggleSpeakerPlay();
                             }
                         }
                     } else {
@@ -327,11 +341,12 @@ function handleControllerInteraction(controller) {
 
     const isMenuVisible = state.inventoryEntity && state.inventoryEntity.object3D && state.inventoryEntity.object3D.visible;
     const isWelcomeVisible = state.welcomePanel !== null;
+    const isSpeakerUIVisible = state.speakerUIEntity !== null;
 
     let line = controller.getObjectByName('laser-line');
     let cursor = controller.getObjectByName('laser-cursor');
 
-    if (!isMenuVisible && !isWelcomeVisible) {
+    if (!isMenuVisible && !isWelcomeVisible && !isSpeakerUIVisible) {
         if (line) line.visible = false;
         if (cursor) cursor.visible = false;
         return;
@@ -382,6 +397,33 @@ function handleControllerInteraction(controller) {
             }
         });
     }
+    
+    // Speaker UI buttons
+    if (state.speakerUIEntity && state.speakerUIEntity.object3D) {
+        let speakerBtnCount = 0;
+        state.speakerUIEntity.object3D.traverse(child => {
+            if (child.el && child.el.classList && child.el.classList.contains('clickable') && child.isMesh) {
+                buttons.push(child);
+                speakerBtnCount++;
+            }
+        });
+        if (speakerBtnCount > 0) {
+            console.log('🔊 Speaker buttons found:', speakerBtnCount);
+        }
+    } else {
+        // Fallback: scan all speaker entities in scene
+        const speakerEls = document.querySelectorAll('.speaker');
+        speakerEls.forEach(speakerEl => {
+            const speakerUI = speakerEl.querySelector('#speaker-ui');
+            if (speakerUI && speakerUI.object3D) {
+                speakerUI.object3D.traverse(child => {
+                    if (child.el && child.el.classList && child.el.classList.contains('clickable') && child.isMesh) {
+                        buttons.push(child);
+                    }
+                });
+            }
+        });
+    }
 
     const intersects = raycaster.intersectObjects(buttons);
 
@@ -406,7 +448,23 @@ function handleControllerInteraction(controller) {
             if (el.id === 'welcome-close-btn') {
                 console.log('📜 Closing Welcome Panel');
                 closeWelcomePanel();
-            } else if (el.dataset.spawnType) {
+            } else if (el.dataset && el.dataset.speakerAction) {
+                // Speaker controls
+                const action = el.dataset.speakerAction;
+                console.log('🔊 Speaker action detected:', action);
+                state.debug('🔊 ' + action);
+                el.setAttribute('color', '#e94560');
+                
+                if (action === 'toggle') {
+                    toggleSpeakerPlay();
+                } else if (action === 'next') {
+                    nextTrack();
+                } else if (action === 'prev') {
+                    prevTrack();
+                } else if (action === 'track' && el.dataset.trackIndex !== undefined) {
+                    selectTrack(parseInt(el.dataset.trackIndex));
+                }
+            } else if (el.dataset && el.dataset.spawnType) {
                 console.log('SPAWN COMMAND for', el.dataset.spawnType);
                 el.setAttribute('color', '#00cec9');
                 spawnObject(el.dataset.spawnType, el.dataset.spawnColor, el.dataset.spawnModel, el.dataset.spawnScale);
