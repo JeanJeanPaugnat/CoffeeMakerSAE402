@@ -12,6 +12,7 @@ let itemsCreatedCount = 0;
 let orderCompleted = false;
 let totalScore = 0;
 let totalOrdersCompleted = 0;
+let orderCompletedTime = 0; // Timestamp de fin de commande
 
 // --- COMMANDE ACTUELLE ---
 let currentOrder = {
@@ -80,6 +81,50 @@ export function initOrders() {
     console.log('📋 Initializing orders...');
     vrLog('📋 System ready');
     resetOrder();
+    
+    // Démarrer la boucle de vérification pour les transitions
+    startOrderLoop();
+}
+
+/**
+ * Boucle de vérification des commandes (remplace setTimeout qui ne marche pas en XR)
+ */
+function startOrderLoop() {
+    function checkLoop() {
+        // Si une commande est terminée et que 2 secondes sont passées
+        if (orderCompleted && orderCompletedTime > 0) {
+            const elapsed = Date.now() - orderCompletedTime;
+            if (elapsed >= 2000) {
+                console.log('⏰ 2s elapsed, resetting order...');
+                doResetOrder();
+            }
+        }
+        requestAnimationFrame(checkLoop);
+    }
+    requestAnimationFrame(checkLoop);
+    console.log('🔄 Order check loop started');
+}
+
+/**
+ * Effectue le reset de la commande
+ */
+function doResetOrder() {
+    vrLog(`📋 New order!`);
+    showARNotification('📋 Nouvelle commande!', 2000);
+    
+    // Reset
+    itemsCreatedCount = 0;
+    orderCompleted = false;
+    orderCompletedTime = 0;
+    
+    // Choisir une nouvelle commande aléatoire
+    const randomIndex = Math.floor(Math.random() * POSSIBLE_ORDERS.length);
+    currentOrder = { ...POSSIBLE_ORDERS[randomIndex] };
+
+    vrLog(`${currentOrder.required}x ${currentOrder.icon}`);
+    console.log(`✅ New order: ${currentOrder.required}x ${currentOrder.label}`);
+    
+    updatePanel();
 }
 
 /**
@@ -233,12 +278,16 @@ function updatePanel() {
     lines.push(``);
     
     // Afficher la commande avec progrès
-    const check = orderCompleted ? '✓' : '○';
-    const status = orderCompleted ? '✅ DONE!' : `${currentOrder.icon} ${currentOrder.label}`;
-    lines.push(`${status}`);
-    lines.push(`${itemsCreatedCount}/${currentOrder.required}`);
+    if (orderCompleted) {
+        lines.push(`✅ DONE!`);
+        lines.push(`⏳ Next order...`);
+    } else {
+        lines.push(`${currentOrder.icon} ${currentOrder.label}`);
+        lines.push(`${itemsCreatedCount}/${currentOrder.required}`);
+    }
     
     ordersPanelText.setAttribute('value', lines.join('\\n'));
+    console.log('[updatePanel]', lines.join(' | '));
 }
 
 /**
@@ -288,32 +337,18 @@ function onItemCreated(itemType) {
     if (itemsCreatedCount >= currentOrder.required) {
         orderCompleted = true;
         totalOrdersCompleted++;
+        orderCompletedTime = Date.now(); // Enregistrer le timestamp
         
         // Calculer les points de la commande (points × quantité)
         const orderPoints = currentOrder.points * currentOrder.required;
         totalScore += orderPoints;
         
-        vrLog(`✅ ORDER COMPLETE! +${orderPoints}pts`);
-        vrLog(`Score: ${totalScore}`);
+        vrLog(`✅ COMPLETE! +${orderPoints}pts`);
+        vrLog(`⏳ Next in 2s...`);
         showARNotification(`🎉 Commande terminée! +${orderPoints} pts`, 3000);
         
         updatePanel();
-        
-        // Nouvelle commande après 2 secondes
-        setTimeout(() => {
-            try {
-                vrLog(`📋 New order...`);
-                showARNotification('📋 Nouvelle commande!', 2000);
-                resetOrder();
-                console.log('✅ Order reset successfully');
-            } catch (e) {
-                console.error('❌ Error resetting order:', e);
-                // Forcer la réinitialisation en cas d'erreur
-                orderCompleted = false;
-                itemsCreatedCount = 0;
-                updatePanel();
-            }
-        }, 2000);
+        console.log('⏰ Order completed, waiting 2s via loop...');
     } else {
         showARNotification(`${currentOrder.icon} ${itemsCreatedCount}/${currentOrder.required}`, 1500);
     }
