@@ -8,7 +8,7 @@
  * - coffee.js      : Machine à café et tasses
  * - inventory.js   : Menu HUD et spawn d'objets
  * - panels.js      : Panneaux UI (welcome, notifications)
- * - customers.js   : Gestion des clients
+ * - wrist-tablet.js: Tablette au poignet (commandes)
  * - grab.js        : Système de grab/release
  * - trash.js       : Système de poubelles
  * - cleaning.js    : Système de nettoyage (balai)
@@ -24,7 +24,7 @@ import * as state from './modules/state.js';
 import { initCoffeeAudio } from './modules/audio.js';
 import { createHUDInventory } from './modules/inventory.js';
 import { createWelcomePanel, setOnWelcomePanelClosed } from './modules/panels.js';
-import { spawnCustomer } from './modules/customers.js';
+import { createWristTablet, initOrders, createDebugPanel } from './modules/wrist-tablet.js';
 import { initStains, startCleaningLoop } from './modules/cleaning.js';
 import { startARSession } from './modules/xr.js';
 
@@ -80,8 +80,8 @@ window.addEventListener('load', () => {
         // Initialisation de l'audio
         initCoffeeAudio();
 
-        // Configurer le callback pour spawner un client après fermeture du welcome panel
-        setOnWelcomePanelClosed(spawnCustomer);
+        // Configurer le callback pour créer la tablette après fermeture du welcome panel
+        setOnWelcomePanelClosed(createWristTablet);
 
         // --- GESTIONNAIRE DU BOUTON START ---
         startBtn.onclick = async () => {
@@ -113,6 +113,12 @@ window.addEventListener('load', () => {
                 const session = await startARSession();
                 
                 if (session) {
+                    // Initialiser les commandes dès maintenant (avant même la fermeture du welcome panel)
+                    initOrders();
+                    
+                    // Créer le panneau de debug VR (pour diagnostiquer)
+                    createDebugPanel();
+                    
                     // Créer le panneau de bienvenue
                     createWelcomePanel();
 
@@ -122,15 +128,6 @@ window.addEventListener('load', () => {
                     // Initialiser les taches et le système de nettoyage
                     initStains();
                     startCleaningLoop();
-
-                    // Backup spawn de client après 10 secondes
-                    setTimeout(() => {
-                        if (state.customers.length === 0 && sceneEl && sceneEl.style.display !== 'none') {
-                            console.warn('⚠️ Backup Spawn Triggered!');
-                            state.debug('⚠️ Auto-Spawning Backup Customer');
-                            spawnCustomer();
-                        }
-                    }, 10000);
                 }
             }, 2500); // Délai du loader (2.5 secondes)
         };

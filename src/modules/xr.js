@@ -5,10 +5,10 @@
 import * as state from './state.js';
 import { grab, release, updateGrabbedObject, rotateGrabbedObject } from './grab.js';
 import { checkTrashcanCollisions } from './trash.js';
-import { checkCoffeeDelivery, removeCustomer } from './customers.js';
 import { toggleInventory, spawnObject } from './inventory.js';
 import { closeWelcomePanel, showARNotification } from './panels.js';
 import { handleCoffeeMachineClick } from './coffee.js';
+import { handleDonutMachineClick } from './donut.js';
 
 /**
  * Ajoute une surface détectée
@@ -152,7 +152,6 @@ function xrLoop(time, frame) {
 
     // Collision checks
     checkTrashcanCollisions();
-    checkCoffeeDelivery();
 
     // Process controller inputs
     processControllerInputs();
@@ -203,12 +202,12 @@ function processControllerInputs() {
             }
         }
 
-        // RIGHT CONTROLLER - A button (give coffee)
+        // RIGHT CONTROLLER - A button (release object)
         if (source.handedness === 'right' && source.gamepad) {
-            // Debug
+            // Debug button presses
             for (let bi = 0; bi < source.gamepad.buttons.length; bi++) {
                 if (source.gamepad.buttons[bi].pressed) {
-                    state.debug(`BTN ${bi} | Grab:${state.grabbed} | Cup:${state.currentGrabbedEl ? 'yes' : 'no'} | Cust:${state.customers.length}`);
+                    state.debug(`BTN ${bi} | Grab:${state.grabbed} | Obj:${state.currentGrabbedEl ? state.currentGrabbedEl.id : 'none'}`);
                 }
             }
 
@@ -217,46 +216,22 @@ function processControllerInputs() {
             if (aBtn && aBtn.pressed && !state.giveCoffeeLock) {
                 state.debug(`A pressed! Grab:${state.grabbed}`);
 
+                // Le bouton A peut être utilisé pour lâcher l'objet
                 if (state.grabbed && state.currentGrabbedEl) {
-                    const isCoffee =
-                        (state.currentGrabbedEl.classList && state.currentGrabbedEl.classList.contains('coffee-cup')) ||
-                        (state.currentGrabbedEl.dataset && state.currentGrabbedEl.dataset.isCoffee === 'true') ||
-                        (state.currentGrabbedEl.id && state.currentGrabbedEl.id.includes('coffee-cup'));
-
-                    state.debug(`Coffee:${isCoffee} Cust:${state.customers.length}`);
-
-                    if (isCoffee && state.customers.length > 0) {
-                        state.setGiveCoffeeLock(true);
-                        console.log('✅ COFFEE GIVEN BY BUTTON A!');
-                        showARNotification('✅ THANKS! Perfect coffee!', 3000);
-                        state.debug('✅ Café livré!');
-
-                        // Remove cup
-                        const cupIdx = state.spawnedObjects.indexOf(state.currentGrabbedEl);
-                        if (cupIdx > -1) state.spawnedObjects.splice(cupIdx, 1);
-                        if (state.currentGrabbedEl.body && state.currentGrabbedEl.body.world) {
-                            state.currentGrabbedEl.body.world.removeBody(state.currentGrabbedEl.body);
-                        }
-                        if (state.currentGrabbedEl.parentNode) state.currentGrabbedEl.parentNode.removeChild(state.currentGrabbedEl);
-
-                        // Reset grab state
-                        state.setGrabbed(false);
-                        state.setGrabController(null);
-                        state.setCurrentGrabbedEl(null);
-
-                        // Remove customer
-                        const customer = state.customers[0];
-                        removeCustomer(customer);
-
-                        setTimeout(() => { state.setGiveCoffeeLock(false); }, 500);
-                    }
+                    state.setGiveCoffeeLock(true);
+                    release();
+                    showARNotification('Objet lâché!', 1000);
+                    setTimeout(() => { state.setGiveCoffeeLock(false); }, 500);
                 }
             }
 
-            // B button - Coffee Machine
+            // B button - Coffee Machine / Donut Box
             const bBtn = source.gamepad.buttons[5];
 
             if (bBtn && bBtn.pressed && !state.coffeeMachineLock) {
+                console.log('[DEBUG] B pressed, searching for machines...');
+                state.debug('B: Cherche machine...');
+                
                 const rightCtrl = window.rightController;
                 if (rightCtrl) {
                     const tempMatrix = new THREE.Matrix4();
@@ -267,30 +242,66 @@ function processControllerInputs() {
                     raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
                     raycaster.far = 5.0;
 
-                    const coffeeMachines = [];
+                    const machines = [];
+                    console.log('[DEBUG] Checking', state.spawnedObjects.length, 'spawned objects');
+                    
                     state.spawnedObjects.forEach(obj => {
                         if (obj && obj.object3D) {
                             const model = obj.getAttribute('gltf-model');
+                            
                             if (model && model.includes('CoffeeMachine')) {
+                                console.log('[DEBUG] Found CoffeeMachine!');
                                 obj.object3D.traverse(child => {
                                     if (child.isMesh) {
                                         child.el = obj;
-                                        coffeeMachines.push(child);
+                                        child.machineType = 'coffee';
+                                        machines.push(child);
+                                    }
+                                });
+                            } else if (model && model.includes('BoxDonuts')) {
+                                console.log('[DEBUG] Found BoxDonuts!');
+                                obj.object3D.traverse(child => {
+                                    if (child.isMesh) {
+                                        child.el = obj;
+                                        child.machineType = 'donut';
+                                        machines.push(child);
                                     }
                                 });
                             }
                         }
                     });
 
-                    const intersects = raycaster.intersectObjects(coffeeMachines);
+                    console.log('[DEBUG] Machines found:', machines.length);
+                    state.debug(`Machines: ${machines.length}`);
+                    
+                    const intersects = raycaster.intersectObjects(machines);
+                    console.log('[DEBUG] Intersections:', intersects.length);
 
                     if (intersects.length > 0) {
-                        const hitEntity = intersects[0].object.el;
+                        const hitMesh = intersects[0].object;
+                        const hitEntity = hitMesh.el;
+                        const machineType = hitMesh.machineType;
+                        
                         if (hitEntity) {
-                            handleCoffeeMachineClick(hitEntity);
+                            if (machineType === 'coffee') {
+                                console.log('[DEBUG] Hit Coffee Machine!');
+                                state.debug('☕ Coffee Machine!');
+                                handleCoffeeMachineClick(hitEntity);
+                            } else if (machineType === 'donut') {
+                                console.log('[DEBUG] Hit Donut Box!');
+                                state.debug('🍩 Donut Box!');
+                                handleDonutMachineClick(hitEntity);
+                            }
                         }
+                    } else {
+                        state.debug('❌ Pas de machine visée');
                     }
+                } else {
+                    console.log('[DEBUG] No rightCtrl');
+                    state.debug('❌ Pas de controller droit');
                 }
+            } else if (bBtn && bBtn.pressed && state.coffeeMachineLock) {
+                state.debug('⏳ En cours...');
             }
         }
 

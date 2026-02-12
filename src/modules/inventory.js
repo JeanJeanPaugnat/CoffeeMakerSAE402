@@ -12,6 +12,7 @@ const INVENTORY_ITEMS = [
     { type: 'box', color: '#ff7675', label: 'CUBE' },
     { type: 'gltf', model: 'models/CoffeeMachine.glb', color: '#fab1a0', label: 'COFFEE', menuScale: '0.2 0.2 0.2', spawnScale: '0.4 0.4 0.4' },
     { type: 'gltf', model: 'models/TrashcanSmall.glb', color: '#a29bfe', label: 'POUBELLE', menuScale: '0.2 0.2 0.2', spawnScale: '0.8 0.8 0.8' },
+    { type: 'gltf', model: 'models/BoxDonuts.glb', color: '#D2691E', label: 'DONUT', menuScale: '0.15 0.15 0.15', spawnScale: '0.3 0.3 0.3' },
     // Row 2 
     { type: 'gltf', label: 'SPEAKER', model: 'models/BassSpeakers.glb', color: '#fff', menuScale: '0.1 0.1 0.1', spawnScale: '0.8 0.8 0.8' },
     { type: 'gltf', label: 'BROOM', model: 'models/Broom.glb', color: '#fff', menuScale: '0.001 0.001 0.001', spawnScale: '0.004 0.004 0.004' },
@@ -132,6 +133,22 @@ function createItemButton(item, x, y) {
         icon = document.createElement('a-entity');
         icon.setAttribute('gltf-model', `url(${item.model})`);
         icon.setAttribute('scale', item.menuScale || '0.08 0.08 0.08');
+    } else if (item.type === 'donutbox') {
+        // Icône spéciale pour la boîte à donuts
+        icon = document.createElement('a-entity');
+        const miniBox = document.createElement('a-box');
+        miniBox.setAttribute('width', '0.1');
+        miniBox.setAttribute('height', '0.05');
+        miniBox.setAttribute('depth', '0.1');
+        miniBox.setAttribute('color', '#FFB6C1');
+        icon.appendChild(miniBox);
+        const miniDonut = document.createElement('a-torus');
+        miniDonut.setAttribute('radius', '0.03');
+        miniDonut.setAttribute('radius-tubular', '0.01');
+        miniDonut.setAttribute('color', '#D2691E');
+        miniDonut.setAttribute('position', '0 0.04 0');
+        icon.appendChild(miniDonut);
+        icon.setAttribute('scale', item.menuScale || '0.5 0.5 0.5');
     } else {
         icon = document.createElement(`a-${item.type}`);
         icon.setAttribute('scale', '0.06 0.06 0.06');
@@ -197,6 +214,31 @@ export function spawnObject(type, color, model, customScale) {
         case 'tetrahedron':
             entity = document.createElement('a-tetrahedron');
             entity.setAttribute('radius', '0.1');
+            break;
+        case 'donutbox':
+            // Créer une boîte à donuts (box avec un torus dessus)
+            entity = document.createElement('a-entity');
+            entity.classList.add('donutbox');
+            
+            // La boîte
+            const box = document.createElement('a-box');
+            box.setAttribute('width', '0.15');
+            box.setAttribute('height', '0.08');
+            box.setAttribute('depth', '0.15');
+            box.setAttribute('color', '#FFB6C1'); // Rose
+            box.setAttribute('position', '0 0 0');
+            entity.appendChild(box);
+            
+            // Le donut décoratif sur la boîte
+            const donutDeco = document.createElement('a-torus');
+            donutDeco.setAttribute('radius', '0.04');
+            donutDeco.setAttribute('radius-tubular', '0.015');
+            donutDeco.setAttribute('color', '#D2691E');
+            donutDeco.setAttribute('position', '0 0.06 0');
+            donutDeco.setAttribute('rotation', '0 0 0');
+            entity.appendChild(donutDeco);
+            
+            entity.setAttribute('scale', customScale || '0.3 0.3 0.3');
             break;
         default:
             entity = document.createElement('a-box');
