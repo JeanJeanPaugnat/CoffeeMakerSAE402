@@ -228,14 +228,15 @@ function updatePanel() {
     
     const lines = [];
     
+    // SCORE EN PREMIER (en haut)
+    lines.push(`⭐ SCORE: ${totalScore} pts`);
+    lines.push(``);
+    
     // Afficher la commande avec progrès
     const check = orderCompleted ? '✓' : '○';
-    const color = orderCompleted ? '🟢' : '🟡';
-    lines.push(`${color} ${check} ${currentOrder.icon} ${currentOrder.label} (${itemsCreatedCount}/${currentOrder.required})`);
-    
-    // Stats
-    lines.push(`Score: ${totalScore} pts`);
-    lines.push(`Orders: ${totalOrdersCompleted}`);
+    const status = orderCompleted ? '✅ DONE!' : `${currentOrder.icon} ${currentOrder.label}`;
+    lines.push(`${status}`);
+    lines.push(`${itemsCreatedCount}/${currentOrder.required}`);
     
     ordersPanelText.setAttribute('value', lines.join('\\n'));
 }
@@ -264,6 +265,12 @@ function onItemCreated(itemType) {
         initOrders();
     }
     
+    // Si commande en cours de transition, ignorer
+    if (orderCompleted) {
+        vrLog('⏳ Wait next order...');
+        return;
+    }
+    
     // Vérifier si c'est le bon type d'item
     if (currentOrder.type !== itemType) {
         vrLog(`❌ Wrong! Need ${currentOrder.icon}`);
@@ -274,30 +281,39 @@ function onItemCreated(itemType) {
     itemsCreatedCount++;
     vrLog(`${currentOrder.icon} ${itemsCreatedCount}/${currentOrder.required}`);
     
-    // Ajouter les points pour chaque item
-    totalScore += currentOrder.points;
-    vrLog(`+${currentOrder.points} pts`);
-    
     // Mettre à jour l'affichage
     updatePanel();
     
     // Vérifier si la commande est complète
-    if (itemsCreatedCount >= currentOrder.required && !orderCompleted) {
+    if (itemsCreatedCount >= currentOrder.required) {
         orderCompleted = true;
         totalOrdersCompleted++;
         
-        vrLog(`✅ ORDER COMPLETE!`);
-        vrLog(`Total: ${totalOrdersCompleted}`);
-        showARNotification(`🎉 Commande terminée! ${totalScore} pts`, 3000);
+        // Calculer les points de la commande (points × quantité)
+        const orderPoints = currentOrder.points * currentOrder.required;
+        totalScore += orderPoints;
+        
+        vrLog(`✅ ORDER COMPLETE! +${orderPoints}pts`);
+        vrLog(`Score: ${totalScore}`);
+        showARNotification(`🎉 Commande terminée! +${orderPoints} pts`, 3000);
         
         updatePanel();
         
-        // Nouvelle commande après 4 secondes
+        // Nouvelle commande après 2 secondes
         setTimeout(() => {
-            vrLog(`📋 New order...`);
-            showARNotification('📋 Nouvelle commande!', 2000);
-            resetOrder();
-        }, 4000);
+            try {
+                vrLog(`📋 New order...`);
+                showARNotification('📋 Nouvelle commande!', 2000);
+                resetOrder();
+                console.log('✅ Order reset successfully');
+            } catch (e) {
+                console.error('❌ Error resetting order:', e);
+                // Forcer la réinitialisation en cas d'erreur
+                orderCompleted = false;
+                itemsCreatedCount = 0;
+                updatePanel();
+            }
+        }, 2000);
     } else {
         showARNotification(`${currentOrder.icon} ${itemsCreatedCount}/${currentOrder.required}`, 1500);
     }
