@@ -14,7 +14,7 @@ import 'aframe-physics-system';
 
 // Import des modules - utilise xr-mesh au lieu de xr
 import * as state from './modules/state.js';
-import { initCoffeeAudio } from './modules/audio.js';
+import { initCoffeeAudio, initBgMusic, playBgMusic } from './modules/audio.js';
 import { createHUDInventory } from './modules/inventory.js';
 import { createWelcomePanel, setOnWelcomePanelClosed } from './modules/panels.js';
 import { createWristTablet, initOrders, createDebugPanel } from './modules/wrist-tablet.js';
@@ -76,6 +76,7 @@ window.addEventListener('load', () => {
 
         // Initialisation de l'audio
         initCoffeeAudio();
+        initBgMusic();
 
         // Configurer le callback pour créer la tablette après fermeture du welcome panel
         setOnWelcomePanelClosed(createWristTablet);
@@ -110,6 +111,9 @@ window.addEventListener('load', () => {
                 const session = await startARSessionMesh();
                 
                 if (session) {
+                    // Lancer la musique de fond
+                    playBgMusic();
+                    
                     // Initialiser les commandes dès maintenant
                     initOrders();
                     
