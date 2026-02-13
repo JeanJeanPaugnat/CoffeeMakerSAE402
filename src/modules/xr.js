@@ -9,7 +9,8 @@ import { toggleInventory, spawnObject } from './inventory.js';
 import { closeWelcomePanel, showARNotification } from './panels.js';
 import { handleCoffeeMachineClick } from './coffee.js';
 import { handleDonutMachineClick } from './donut.js';
-import { toggleSpeakerPlay, nextTrack, prevTrack, selectTrack } from './speaker.js';
+import { toggleSpeakerPlay, nextTrack, prevTrack, selectTrack, createSpeakerUI, removeSpeakerUI } from './speaker.js';
+import { vrLog } from './log-panel.js';
 
 /**
  * Ajoute une surface détectée
@@ -303,8 +304,18 @@ function processControllerInputs() {
                                 handleDonutMachineClick(hitEntity);
                             } else if (machineType === 'speaker') {
                                 console.log('[DEBUG] Hit Speaker!');
-                                state.debug('🔊 Speaker! Toggle music');
-                                toggleSpeakerPlay();
+                                vrLog('🔊 Hit Speaker model');
+                                // Toggle l'UI du speaker au lieu de toggle la musique
+                                if (state.speakerUIEntity) {
+                                    vrLog('❌ Closing Speaker UI');
+                                    state.debug('🔊 Closing Speaker UI');
+                                    removeSpeakerUI();
+                                    state.setSpeakerUI(null);
+                                } else {
+                                    vrLog('✅ Opening Speaker UI');
+                                    state.debug('🔊 Opening Speaker UI');
+                                    createSpeakerUI(hitEntity);
+                                }
                             }
                         }
                     } else {
@@ -407,10 +418,12 @@ function handleControllerInteraction(controller) {
                 speakerBtnCount++;
             }
         });
-        if (speakerBtnCount > 0) {
-            console.log('🔊 Speaker buttons found:', speakerBtnCount);
+        // Log seulement au premier clic
+        if (window.isAnyBtnPressed && !window.uiClickLock) {
+            vrLog(`🎯 SpeakerUI btns: ${speakerBtnCount}`);
         }
-    } else {
+    } else if (window.isAnyBtnPressed && !window.uiClickLock) {
+        vrLog('⚠️ No speakerUIEntity');
         // Fallback: scan all speaker entities in scene
         const speakerEls = document.querySelectorAll('.speaker');
         speakerEls.forEach(speakerEl => {
@@ -431,6 +444,13 @@ function handleControllerInteraction(controller) {
         const hit = intersects[0];
         const el = hit.object.el;
         const dist = hit.distance;
+        
+        // Log ce qu'on détecte seulement au clic
+        if (window.isAnyBtnPressed && !window.uiClickLock) {
+            const elId = el?.id || 'no-id';
+            const hasAction = el?.dataset?.speakerAction || 'none';
+            vrLog(`🎯 Hit: ${elId} act=${hasAction}`);
+        }
 
         const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -dist)];
         line.geometry.setFromPoints(points);
@@ -451,17 +471,22 @@ function handleControllerInteraction(controller) {
             } else if (el.dataset && el.dataset.speakerAction) {
                 // Speaker controls
                 const action = el.dataset.speakerAction;
+                vrLog(`🎮 Speaker action: ${action}`);
                 console.log('🔊 Speaker action detected:', action);
                 state.debug('🔊 ' + action);
                 el.setAttribute('color', '#e94560');
                 
                 if (action === 'toggle') {
+                    vrLog('▶️ toggle!');
                     toggleSpeakerPlay();
                 } else if (action === 'next') {
+                    vrLog('⏭️ next!');
                     nextTrack();
                 } else if (action === 'prev') {
+                    vrLog('⏮️ prev!');
                     prevTrack();
                 } else if (action === 'track' && el.dataset.trackIndex !== undefined) {
+                    vrLog(`🎵 track ${el.dataset.trackIndex}`);
                     selectTrack(parseInt(el.dataset.trackIndex));
                 }
             } else if (el.dataset && el.dataset.spawnType) {

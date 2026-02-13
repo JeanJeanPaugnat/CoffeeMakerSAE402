@@ -5,6 +5,7 @@
 
 import * as state from './state.js';
 import { stopBgMusic, playBgMusic } from './audio.js';
+import { vrLog } from './log-panel.js';
 
 // --- PLAYLIST ---
 const PLAYLIST = [
@@ -35,7 +36,21 @@ function initSpeakerAudio() {
         
         // Passer à la chanson suivante quand une se termine
         speakerAudio.addEventListener('ended', () => {
+            vrLog('🎵 Track ended, next...');
             nextTrack();
+        });
+        
+        // Log des erreurs audio
+        speakerAudio.addEventListener('error', (e) => {
+            vrLog(`❌ Audio err: ${e.type}`);
+        });
+        
+        speakerAudio.addEventListener('loadstart', () => {
+            vrLog('📥 Loading track...');
+        });
+        
+        speakerAudio.addEventListener('canplay', () => {
+            vrLog('✅ Track ready');
         });
     }
     return speakerAudio;
@@ -46,13 +61,20 @@ function initSpeakerAudio() {
  * @param {number} index - Index de la piste dans la playlist
  */
 function loadTrack(index) {
-    if (index < 0 || index >= PLAYLIST.length) return;
+    vrLog(`🎵 loadTrack(${index})`);
+    
+    if (index < 0 || index >= PLAYLIST.length) {
+        vrLog(`❌ Invalid idx: ${index}`);
+        return;
+    }
     
     currentTrackIndex = index;
     const track = PLAYLIST[index];
     
     initSpeakerAudio();
-    speakerAudio.src = `/CoffeeMakerSAE402/sounds/speakerPlaylist/${encodeURIComponent(track.file)}`;
+    const src = `/CoffeeMakerSAE402/sounds/speakerPlaylist/${encodeURIComponent(track.file)}`;
+    vrLog(`📁 ${track.name}`);
+    speakerAudio.src = src;
     
     console.log(`🔊 Chargement: ${track.name}`);
     updateUITrackName();
@@ -63,11 +85,13 @@ function loadTrack(index) {
  */
 export function toggleSpeakerPlay() {
     console.log('🔊 toggleSpeakerPlay called');
+    vrLog('🔊 toggleSpeakerPlay');
     initSpeakerAudio();
     
     if (isPlaying) {
         speakerAudio.pause();
         isPlaying = false;
+        vrLog('⏸️ PAUSED');
         console.log('⏸️ Speaker en pause');
         state.debug('⏸️ Musique en pause');
         // Reprendre la musique de fond
@@ -78,15 +102,21 @@ export function toggleSpeakerPlay() {
         
         // Si pas de source chargée, charger la première piste
         if (!speakerAudio.src || speakerAudio.src === '') {
+            vrLog('🎵 No src, loading 0');
             loadTrack(0);
         }
         
-        speakerAudio.play().catch(e => {
+        vrLog('▶️ Attempting play...');
+        speakerAudio.play().then(() => {
+            vrLog('✅ Playing OK!');
+        }).catch(e => {
+            vrLog(`❌ Play err: ${e.message}`);
             console.log('Speaker error:', e);
             state.debug('❌ Erreur audio: ' + e.message);
         });
         isPlaying = true;
         const track = PLAYLIST[currentTrackIndex];
+        vrLog(`▶️ ${track?.name}`);
         console.log('▶️ Speaker en lecture:', track?.name);
         state.debug('▶️ ' + (track?.name || 'Playing'));
     }
@@ -98,11 +128,18 @@ export function toggleSpeakerPlay() {
  * Piste suivante
  */
 export function nextTrack() {
+    vrLog(`⏭️ NEXT (was ${currentTrackIndex})`);
     const nextIndex = (currentTrackIndex + 1) % PLAYLIST.length;
     loadTrack(nextIndex);
     
     if (isPlaying) {
-        speakerAudio.play().catch(e => console.log('Speaker error:', e));
+        vrLog('▶️ Auto-play next');
+        speakerAudio.play().then(() => {
+            vrLog('✅ Next playing');
+        }).catch(e => {
+            vrLog(`❌ Next err: ${e.message}`);
+            console.log('Speaker error:', e);
+        });
     }
 }
 
@@ -110,11 +147,18 @@ export function nextTrack() {
  * Piste précédente
  */
 export function prevTrack() {
+    vrLog(`⏮️ PREV (was ${currentTrackIndex})`);
     const prevIndex = (currentTrackIndex - 1 + PLAYLIST.length) % PLAYLIST.length;
     loadTrack(prevIndex);
     
     if (isPlaying) {
-        speakerAudio.play().catch(e => console.log('Speaker error:', e));
+        vrLog('▶️ Auto-play prev');
+        speakerAudio.play().then(() => {
+            vrLog('✅ Prev playing');
+        }).catch(e => {
+            vrLog(`❌ Prev err: ${e.message}`);
+            console.log('Speaker error:', e);
+        });
     }
 }
 
@@ -164,19 +208,28 @@ function updateUIPlayButton() {
  */
 export function createSpeakerUI(speakerEntity) {
     console.log('🔊 createSpeakerUI called');
+    vrLog('🔊 createSpeakerUI');
     state.debug('🔊 Creating Speaker UI...');
     
     if (!speakerEntity) {
         console.log('❌ No speakerEntity');
+        vrLog('❌ No speakerEntity!');
         state.debug('❌ No speakerEntity');
         return;
     }
     
+    vrLog(`📦 Entity: ${speakerEntity.id || 'no-id'}`);
+    
     if (!speakerEntity.object3D) {
         console.log('❌ No object3D on speakerEntity');
+        vrLog('❌ No object3D!');
         state.debug('❌ No object3D');
         return;
     }
+    
+    // Log position pour debug physique
+    const pos = speakerEntity.getAttribute('position');
+    vrLog(`📍 Pos: ${pos?.x?.toFixed(2)}, ${pos?.y?.toFixed(2)}, ${pos?.z?.toFixed(2)}`);
     
     // Si une UI existe déjà pour un autre speaker, la supprimer
     if (speakerUI && speakerUI.parentNode) {
@@ -250,6 +303,7 @@ export function createSpeakerUI(speakerEntity) {
     }
     
     // Ajouter l'UI au speaker
+    vrLog('📎 Attaching UI to speaker');
     speakerEntity.appendChild(speakerUI);
     
     // Stocker dans state pour les interactions VR
@@ -258,6 +312,7 @@ export function createSpeakerUI(speakerEntity) {
     // Faire face à la caméra (billboard)
     speakerUI.setAttribute('look-at', '#cam');
     
+    vrLog('✅ Speaker UI OK!');
     console.log('🔊 Speaker UI créée et ajoutée à state');
     state.debug('🔊 Speaker UI OK!');
 }
