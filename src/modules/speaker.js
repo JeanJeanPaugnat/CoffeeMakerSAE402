@@ -188,7 +188,7 @@ export function createSpeakerUI(speakerEntity) {
     // Créer le panneau UI
     speakerUI = document.createElement('a-entity');
     speakerUI.id = 'speaker-ui';
-    speakerUI.setAttribute('position', '0 0.5 0'); // Au-dessus du speaker
+    speakerUI.setAttribute('position', '0 0.8 0'); // Au-dessus du speaker
     
     // Fond du panneau
     const bg = document.createElement('a-plane');
