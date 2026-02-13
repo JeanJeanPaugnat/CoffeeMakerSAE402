@@ -21,11 +21,28 @@ export function setOnWelcomePanelClosed(callback) {
  */
 export function createWelcomePanel() {
     const cam = document.getElementById('cam');
-    if (!cam) return null;
+    const scene = document.querySelector('a-scene');
+    if (!cam || !scene) return null;
+
+    // Récupérer la position de la caméra pour placer le panneau devant
+    const camPos = cam.object3D.position.clone();
+    const camRot = cam.object3D.rotation;
+    
+    // Calculer la position devant la caméra (1.5m de distance)
+    const distance = 1.5;
+    const targetX = camPos.x - Math.sin(camRot.y) * distance;
+    const targetY = camPos.y - 0.2; // Légèrement au-dessus des yeux
+    const targetZ = camPos.z - Math.cos(camRot.y) * distance;
+    
+    // Position de départ (au-dessus, hors de vue)
+    const startY = targetY + 2;
 
     const welcomePanel = document.createElement('a-entity');
-    welcomePanel.setAttribute('position', '0 0 -1.2');
-    welcomePanel.setAttribute('rotation', '0 0 0');
+    welcomePanel.setAttribute('position', `${targetX} ${startY} ${targetZ}`);
+    
+    // Faire face à la caméra
+    const angleY = (camRot.y * 180 / Math.PI);
+    welcomePanel.setAttribute('rotation', `0 ${angleY} 0`);
 
     // Paper Background
     const paper = document.createElement('a-plane');
@@ -113,10 +130,20 @@ export function createWelcomePanel() {
     });
 
     welcomePanel.appendChild(closeBtn);
-    cam.appendChild(welcomePanel);
+    
+    // Attacher à la scène (ancré dans le monde, pas à la caméra)
+    scene.appendChild(welcomePanel);
+    
+    // Animation de descente depuis le haut
+    welcomePanel.setAttribute('animation', {
+        property: 'position',
+        to: `${targetX} ${targetY} ${targetZ}`,
+        dur: 1000,
+        easing: 'easeOutCubic'
+    });
     
     state.setWelcomePanel(welcomePanel);
-    console.log('📜 Welcome Panel Created');
+    console.log('📜 Welcome Panel Created with drop animation');
 
     return welcomePanel;
 }
