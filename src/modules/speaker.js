@@ -246,7 +246,7 @@ export function createSpeakerUI(speakerEntity) {
     // Fond du panneau
     const bg = document.createElement('a-plane');
     bg.setAttribute('width', '0.5');
-    bg.setAttribute('height', '0.4');
+    bg.setAttribute('height', '0.25');
     bg.setAttribute('color', '#1a1a2e');
     bg.setAttribute('material', 'shader: flat; opacity: 0.95');
     speakerUI.appendChild(bg);
@@ -254,7 +254,7 @@ export function createSpeakerUI(speakerEntity) {
     // Bordure
     const border = document.createElement('a-plane');
     border.setAttribute('width', '0.52');
-    border.setAttribute('height', '0.42');
+    border.setAttribute('height', '0.27');
     border.setAttribute('color', '#e94560');
     border.setAttribute('material', 'shader: flat');
     border.setAttribute('position', '0 0 -0.001');
@@ -264,7 +264,7 @@ export function createSpeakerUI(speakerEntity) {
     const title = document.createElement('a-text');
     title.setAttribute('value', '🔊 SPEAKER');
     title.setAttribute('align', 'center');
-    title.setAttribute('position', '0 0.15 0.01');
+    title.setAttribute('position', '0 0.08 0.01');
     title.setAttribute('width', '1.2');
     title.setAttribute('color', '#e94560');
     speakerUI.appendChild(title);
@@ -274,13 +274,13 @@ export function createSpeakerUI(speakerEntity) {
     trackName.id = 'speaker-track-name';
     trackName.setAttribute('value', PLAYLIST[currentTrackIndex]?.name || 'Select a track');
     trackName.setAttribute('align', 'center');
-    trackName.setAttribute('position', '0 0.05 0.01');
+    trackName.setAttribute('position', '0 0.01 0.01');
     trackName.setAttribute('width', '0.8');
     trackName.setAttribute('color', '#ffffff');
     speakerUI.appendChild(trackName);
     
     // Boutons de contrôle
-    const controlsY = -0.05;
+    const controlsY = -0.07;
     
     // Bouton Précédent
     const prevBtn = createControlButton('⏮', -0.12, controlsY, 'prev');
@@ -294,13 +294,6 @@ export function createSpeakerUI(speakerEntity) {
     // Bouton Suivant
     const nextBtn = createControlButton('⏭', 0.12, controlsY, 'next');
     speakerUI.appendChild(nextBtn);
-    
-    // Liste des pistes (scrollable visuellement, 3 visibles)
-    const listY = -0.12;
-    for (let i = 0; i < Math.min(3, PLAYLIST.length); i++) {
-        const trackBtn = createTrackButton(i, 0, listY - (i * 0.045));
-        speakerUI.appendChild(trackBtn);
-    }
     
     // Ajouter l'UI au speaker
     vrLog('📎 Attaching UI to speaker');
