@@ -4,6 +4,13 @@
 
 import * as state from './state.js';
 
+// Modèles de taches de sang disponibles
+const BLOOD_MODELS = [
+    '/CoffeeMakerSAE402/models/Blood.glb',
+    '/CoffeeMakerSAE402/models/BloodSplat.glb',
+    '/CoffeeMakerSAE402/models/BloodSplat2.glb'
+];
+
 /**
  * Crée une tache aléatoire sur le sol
  */
@@ -12,19 +19,22 @@ export function spawnRandomStain() {
     const z = (Math.random() - 0.5) * 4 - 1.5;
     const y = 0.01;
 
-    const stain = document.createElement('a-circle');
-    stain.setAttribute('radius', 0.2 + Math.random() * 0.2);
-    stain.setAttribute('rotation', '-90 0 0');
+    // Choisir un modèle de sang aléatoire
+    const randomModel = BLOOD_MODELS[Math.floor(Math.random() * BLOOD_MODELS.length)];
+    const randomRotation = Math.random() * 360;
+    const randomScale = 0.3 + Math.random() * 0.3;
+
+    const stain = document.createElement('a-entity');
+    stain.setAttribute('gltf-model', randomModel);
     stain.setAttribute('position', `${x} ${y} ${z}`);
-    stain.setAttribute('color', '#5d4037');
-    stain.setAttribute('opacity', '0.9');
-    stain.setAttribute('material', 'shader: flat; transparent: true');
+    stain.setAttribute('rotation', `0 ${randomRotation} 0`);
+    stain.setAttribute('scale', `${randomScale} ${randomScale} ${randomScale}`);
     stain.classList.add('stain');
 
     state.sceneEl.appendChild(stain);
-    state.stains.push({ el: stain, health: 100 });
+    state.stains.push({ el: stain, health: 100, scale: randomScale });
 
-    console.log('Dirt spot spawned at', x, z);
+    console.log('Blood stain spawned at', x, z);
 }
 
 /**
@@ -58,7 +68,10 @@ export function checkCleaning() {
 
         if (dist < 0.4 && verticalDist < 0.5) {
             stainObj.health -= 5;
-            stainObj.el.setAttribute('opacity', stainObj.health / 100);
+            
+            // Réduire le scale proportionnellement à la santé
+            const scaleFactor = (stainObj.health / 100) * stainObj.scale;
+            stainObj.el.setAttribute('scale', `${scaleFactor} ${scaleFactor} ${scaleFactor}`);
 
             if (stainObj.health <= 0) {
                 if (stainObj.el.parentNode) stainObj.el.parentNode.removeChild(stainObj.el);

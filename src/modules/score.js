@@ -135,7 +135,7 @@ export function initScorePanel() {
     // Créer le panneau
     scorePanel = document.createElement('a-entity');
     scorePanel.id = 'score-panel';
-    scorePanel.setAttribute('position', '0 0.35 -0.6'); // En haut de la vision
+    scorePanel.setAttribute('position', '0 0.2 -0.6'); // En haut de la vision
     
     // Fond semi-transparent
     const bg = document.createElement('a-plane');
