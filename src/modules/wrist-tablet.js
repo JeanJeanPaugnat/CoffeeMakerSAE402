@@ -6,13 +6,12 @@
 import * as state from './state.js';
 import { showARNotification } from './panels.js';
 import { vrLog, initLogsPanel } from './log-panel.js';
+import { addScore, incrementOrdersCompleted, resetScore, initScorePanel } from './score.js';
 
 // --- ÉTAT ---
 let isInitialized = false;
 let itemsCreatedCount = 0;
 let orderCompleted = false;
-let totalScore = 0;
-let totalOrdersCompleted = 0;
 let orderCompletedTime = 0; // Timestamp de fin de commande
 
 // --- COMMANDE ACTUELLE ---
@@ -195,6 +194,9 @@ function createOrdersPanel() {
     // Initialiser le panneau de logs externe
     initLogsPanel();
     
+    // Initialiser le panneau de score en haut
+    initScorePanel();
+    
     // Mettre à jour l'affichage
     updatePanel();
 }
@@ -206,10 +208,6 @@ function updatePanel() {
     if (!ordersPanelText) return;
     
     const lines = [];
-    
-    // SCORE EN PREMIER (en haut)
-    lines.push(`⭐ SCORE: ${totalScore} pts`);
-    lines.push(``);
     
     // Afficher la commande avec progrès
     if (orderCompleted) {
@@ -270,12 +268,12 @@ function onItemCreated(itemType) {
     // Vérifier si la commande est complète
     if (itemsCreatedCount >= currentOrder.required) {
         orderCompleted = true;
-        totalOrdersCompleted++;
+        incrementOrdersCompleted();
         orderCompletedTime = Date.now(); // Enregistrer le timestamp
         
         // Calculer les points de la commande (points × quantité)
         const orderPoints = currentOrder.points * currentOrder.required;
-        totalScore += orderPoints;
+        addScore(orderPoints, currentOrder.label);
         
         vrLog(`✅ COMPLETE! +${orderPoints}pts`);
         vrLog(`⏳ Next in 2s...`);
@@ -289,11 +287,9 @@ function onItemCreated(itemType) {
 }
 
 /**
- * Retourne le score actuel
+ * Retourne le score actuel (délègue au module score)
  */
-export function getScore() {
-    return { score: totalScore, completed: totalOrdersCompleted };
-}
+export { getStats as getScore } from './score.js';
 
 /**
  * Réinitialise tout
@@ -301,8 +297,7 @@ export function getScore() {
 export function resetOrders() {
     itemsCreatedCount = 0;
     orderCompleted = false;
-    totalScore = 0;
-    totalOrdersCompleted = 0;
+    resetScore();
     isInitialized = false;
     initOrders();
 }
