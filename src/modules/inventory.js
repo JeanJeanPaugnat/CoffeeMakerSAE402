@@ -3,6 +3,7 @@
  */
 
 import * as state from './state.js';
+import { createSpeakerUI, stopSpeaker, removeSpeakerUI } from './speaker.js';
 
 /**
  * Configuration des items disponibles dans le store
@@ -257,6 +258,50 @@ export function spawnObject(type, color, model, customScale) {
     if (model && model.includes('Trashcan')) {
         entity.classList.add('trashcan');
         state.trashcans.push(entity);
+    }
+    
+    // Si c'est un speaker, créer l'interface de musique
+    if (model && model.includes('BassSpeakers')) {
+        // Supprimer l'ancien speaker s'il existe
+        const oldSpeakers = document.querySelectorAll('.speaker');
+        if (oldSpeakers.length > 0) {
+            console.log('🔊 Removing old speaker(s)');
+            stopSpeaker(); // Arrêter la musique
+            removeSpeakerUI(); // Supprimer l'UI
+            
+            oldSpeakers.forEach(oldSpeaker => {
+                // Retirer de spawnedObjects
+                const idx = state.spawnedObjects.indexOf(oldSpeaker);
+                if (idx > -1) state.spawnedObjects.splice(idx, 1);
+                // Supprimer du DOM
+                if (oldSpeaker.parentNode) oldSpeaker.parentNode.removeChild(oldSpeaker);
+            });
+        }
+        
+        entity.classList.add('speaker');
+        console.log('🔊 Speaker spawned, setting up UI...');
+        state.debug('🔊 Speaker placé!');
+        
+        // Attendre que le modèle soit chargé pour créer l'UI et appliquer la physique
+        entity.addEventListener('model-loaded', () => {
+            console.log('🔊 Speaker model loaded event fired');
+            state.debug('🔊 Model loaded!');
+            // (Ré)appliquer la physique après chargement du modèle
+            entity.setAttribute('dynamic-body', 'mass:0.5;linearDamping:0.3;angularDamping:0.3');
+            createSpeakerUI(entity);
+        });
+        
+        // Fallback: créer l'UI après un délai si model-loaded ne se déclenche pas
+        setTimeout(() => {
+            console.log('🔊 Checking for speaker UI after timeout...');
+            if (!entity.querySelector('#speaker-ui')) {
+                console.log('🔊 Fallback: creating speaker UI after timeout');
+                state.debug('🔊 Fallback UI creation');
+                createSpeakerUI(entity);
+            } else {
+                console.log('🔊 Speaker UI already exists');
+            }
+        }, 2000);
     }
 
     state.sceneEl.appendChild(entity);

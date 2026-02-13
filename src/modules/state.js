@@ -37,9 +37,11 @@ export let lastSpawnTime = 0;
 // --- UI ENTITIES ---
 export let inventoryEntity = null;
 export let welcomePanel = null;
+export let speakerUIEntity = null;
 
 // --- AUDIO ---
 export let coffeeAudio = null;
+export let bgMusic = null;
 
 // --- CONSTANTS ---
 export const TRASH_RADIUS = 0.2;
@@ -130,8 +132,16 @@ export function setWelcomePanel(panel) {
     welcomePanel = panel;
 }
 
+export function setSpeakerUI(ui) {
+    speakerUIEntity = ui;
+}
+
 export function setCoffeeAudio(audio) {
     coffeeAudio = audio;
+}
+
+export function setBgMusic(audio) {
+    bgMusic = audio;
 }
 
 export function setCursor(cursor) {
