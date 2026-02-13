@@ -201,4 +201,5 @@ export function showARNotification(message, duration = 2000) {
             }
         }, 50);
     }, duration);
+    
 }

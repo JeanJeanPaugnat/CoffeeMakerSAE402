@@ -9,13 +9,13 @@ import { vrLog } from './log-panel.js';
 
 // --- PLAYLIST ---
 const PLAYLIST = [
-    { name: 'Billie Jean', file: 'billie-jean-official-video.mp3' },
+    { name: 'Billie Jean', file: 'billieJean.mp3' },
     { name: 'Party Rock', file: 'LMFAO.mp3' },
     { name: 'Lean On', file: 'LeanOn.mp3' },
-    { name: 'No Broke Boys', file: 'no-broke-boys-official-audio.mp3' },
+    { name: 'No Broke Boys', file: 'brokeBoys.mp3' },
     { name: 'Timber', file: 'Timber.mp3' },
     { name: 'Shake It Off', file: 'ShakeItOff.mp3' },
-    { name: 'I Gotta Feeling', file: 'GottaFeelming.mp3' }
+    { name: 'I Gotta Feeling', file: 'GottaFeelling.mp3' }
 ];
 
 // --- ÉTAT DU SPEAKER ---
