@@ -10,12 +10,12 @@ import { vrLog } from './log-panel.js';
 // --- PLAYLIST ---
 const PLAYLIST = [
     { name: 'Billie Jean', file: 'billie-jean-official-video.mp3' },
-    { name: 'Party Rock', file: 'LMFAO - Party Rock Anthem (Audio) ft. Lauren Bennett, GoonRock.mp3' },
-    { name: 'Lean On', file: 'Major Lazer & DJ Snake - Lean On (feat. MØ) [Official Lyric Video].mp3' },
+    { name: 'Party Rock', file: 'LMFAO.mp3' },
+    { name: 'Lean On', file: 'LeanOn.mp3' },
     { name: 'No Broke Boys', file: 'no-broke-boys-official-audio.mp3' },
-    { name: 'Timber', file: 'Pitbull, Ke$ha - Timber (featuring Ke$ha - Official Video).mp3' },
-    { name: 'Shake It Off', file: 'Taylor Swift - Shake It Off.mp3' },
-    { name: 'I Gotta Feeling', file: 'The Black Eyed Peas - I Gotta Feeling (Official Music Video).mp3' }
+    { name: 'Timber', file: 'Timber.mp3' },
+    { name: 'Shake It Off', file: 'ShakeItOff.mp3' },
+    { name: 'I Gotta Feeling', file: 'GottaFeelming.mp3' }
 ];
 
 // --- ÉTAT DU SPEAKER ---
