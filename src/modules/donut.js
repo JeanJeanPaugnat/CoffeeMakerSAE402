@@ -3,6 +3,7 @@
  */
 
 import * as state from './state.js';
+import { notifyStoryEvent } from './story.js';
 import { onDonutCreated } from './wrist-tablet.js';
 
 // Lock pour éviter les doubles clics
@@ -41,6 +42,9 @@ export function spawnDonut(machineEntity) {
 
     console.log('🍩 Donut créé');
     state.debug('🍩 Donut prêt!');
+
+    // Story mode
+    notifyStoryEvent('make_donut');
     
     // Notifier le panneau de commandes
     try {
