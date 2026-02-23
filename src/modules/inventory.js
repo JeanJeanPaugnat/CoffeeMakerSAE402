@@ -5,6 +5,8 @@
 import * as state from './state.js';
 import { createSpeakerUI, stopSpeaker, removeSpeakerUI } from './speaker.js';
 import { notifyStoryEvent, updateStoryPanel } from './story.js';
+import { isItemUnlocked, getRequiredScore, setRefreshStoreCallback } from './unlocks.js';
+import { showARNotification } from './panels.js';
 
 /**
  * Configuration des items disponibles dans le store
@@ -72,6 +74,22 @@ export function createHUDInventory() {
     menu.appendChild(line);
 
     // Create item buttons
+    buildStoreItems(menu);
+
+    cam.appendChild(menu);
+    console.log('🛍️ HUD Inventory Created');
+
+    // Enregistrer le callback pour rafraîchir le store quand un item est débloqué
+    setRefreshStoreCallback(() => refreshStoreUI());
+
+    return menu;
+}
+
+/**
+ * Construit les boutons d'items dans le menu
+ * @param {Element} menu - L'entité du menu
+ */
+function buildStoreItems(menu) {
     const gap = 0.35;
     const itemsPerRow = 4;
     const startX = -((itemsPerRow - 1) * gap) / 2;
@@ -83,12 +101,26 @@ export function createHUDInventory() {
         const y = 0.25 - (row * 0.4);
 
         const btnGroup = createItemButton(item, x, y);
+        btnGroup.classList.add('store-item-btn');
         menu.appendChild(btnGroup);
     });
+}
 
-    cam.appendChild(menu);
-    console.log('🛍️ HUD Inventory Created');
-    return menu;
+/**
+ * Rafraîchit le VR Store pour mettre à jour les items débloqués/verrouillés
+ */
+export function refreshStoreUI() {
+    const menu = state.inventoryEntity;
+    if (!menu) return;
+
+    // Supprimer les anciens boutons d'items
+    const oldBtns = menu.querySelectorAll('.store-item-btn');
+    oldBtns.forEach(btn => btn.parentNode.removeChild(btn));
+
+    // Recréer les boutons avec l'état de lock/unlock mis à jour
+    buildStoreItems(menu);
+
+    console.log('🛍️ Store UI refreshed');
 }
 
 /**
@@ -98,34 +130,55 @@ function createItemButton(item, x, y) {
     const btnGroup = document.createElement('a-entity');
     btnGroup.setAttribute('position', `${x} ${y} 0.05`);
 
+    const unlocked = isItemUnlocked(item.label);
+    const requiredScore = getRequiredScore(item.label);
+
     // Card Background
     const btn = document.createElement('a-box');
     btn.setAttribute('width', '0.28');
     btn.setAttribute('height', '0.32');
     btn.setAttribute('depth', '0.02');
-    btn.setAttribute('color', '#2d3436');
     btn.setAttribute('opacity', '0.9');
     btn.setAttribute('class', 'clickable');
 
-    // Spawn Data
-    btn.dataset.spawnType = item.type;
-    btn.dataset.spawnColor = item.color;
-    if (item.model) btn.dataset.spawnModel = item.model;
-    if (item.spawnScale) btn.dataset.spawnScale = item.spawnScale;
-
-    // Hover Effects
-    btn.addEventListener('mouseenter', () => {
-        btn.setAttribute('color', '#636e72');
-        btn.setAttribute('scale', '1.1 1.1 1.1');
-        const icon = btnGroup.querySelector('.item-icon');
-        if (icon) icon.setAttribute('animation', 'property: rotation; to: 25 385 0; dur: 800; easing: easeInOutQuad');
-    });
-    btn.addEventListener('mouseleave', () => {
+    if (unlocked) {
         btn.setAttribute('color', '#2d3436');
-        btn.setAttribute('scale', '1 1 1');
-        const icon = btnGroup.querySelector('.item-icon');
-        if (icon) icon.removeAttribute('animation');
-    });
+
+        // Spawn Data (only for unlocked items)
+        btn.dataset.spawnType = item.type;
+        btn.dataset.spawnColor = item.color;
+        if (item.model) btn.dataset.spawnModel = item.model;
+        if (item.spawnScale) btn.dataset.spawnScale = item.spawnScale;
+
+        // Hover Effects
+        btn.addEventListener('mouseenter', () => {
+            btn.setAttribute('color', '#636e72');
+            btn.setAttribute('scale', '1.1 1.1 1.1');
+            const icon = btnGroup.querySelector('.item-icon');
+            if (icon) icon.setAttribute('animation', 'property: rotation; to: 25 385 0; dur: 800; easing: easeInOutQuad');
+        });
+        btn.addEventListener('mouseleave', () => {
+            btn.setAttribute('color', '#2d3436');
+            btn.setAttribute('scale', '1 1 1');
+            const icon = btnGroup.querySelector('.item-icon');
+            if (icon) icon.removeAttribute('animation');
+        });
+    } else {
+        // LOCKED ITEM
+        btn.setAttribute('color', '#1a1a1a');
+        btn.dataset.locked = 'true';
+        btn.dataset.requiredScore = requiredScore;
+
+        // Hover: shake effect + show required score
+        btn.addEventListener('mouseenter', () => {
+            btn.setAttribute('color', '#2a1a1a');
+            btn.setAttribute('scale', '1.05 1.05 1.05');
+        });
+        btn.addEventListener('mouseleave', () => {
+            btn.setAttribute('color', '#1a1a1a');
+            btn.setAttribute('scale', '1 1 1');
+        });
+    }
 
     btnGroup.appendChild(btn);
 
@@ -160,15 +213,29 @@ function createItemButton(item, x, y) {
     icon.setAttribute('position', '0 0.04 0.06');
     icon.setAttribute('rotation', '25 25 0');
     icon.setAttribute('class', 'item-icon');
+
+    // If locked, reduce opacity on the icon
+    if (!unlocked) {
+        icon.setAttribute('material', 'opacity: 0.3');
+    }
+
     btnGroup.appendChild(icon);
 
     // Label
     const label = document.createElement('a-text');
-    label.setAttribute('value', item.label);
     label.setAttribute('align', 'center');
     label.setAttribute('position', '0 -0.11 0.06');
     label.setAttribute('width', '1.4');
-    label.setAttribute('color', '#dfe6e9');
+
+    if (unlocked) {
+        label.setAttribute('value', item.label);
+        label.setAttribute('color', '#dfe6e9');
+    } else {
+        // Show lock icon and required score
+        label.setAttribute('value', `[LOCKED] ${requiredScore}pts`);
+        label.setAttribute('color', '#636e72');
+    }
+
     btnGroup.appendChild(label);
 
     return btnGroup;
@@ -183,6 +250,18 @@ export function spawnObject(type, color, model, customScale) {
         console.warn('⚠️ Spawn rate limited');
         return;
     }
+
+    // Check if the item is locked (dataset from the button)
+    // This is a safety net; locked buttons shouldn't have spawn data
+    // but just in case, we check here too
+    const itemLabel = getItemLabelFromModel(model);
+    if (itemLabel && !isItemUnlocked(itemLabel)) {
+        const req = getRequiredScore(itemLabel);
+        showARNotification(`[LOCKED] Need ${req} pts to unlock ${itemLabel}!`, 2500);
+        console.log(`🔒 Blocked spawn: ${itemLabel} requires ${req} pts`);
+        return;
+    }
+
     state.setLastSpawnTime(now);
 
     const cam = document.getElementById('cam');
@@ -221,7 +300,7 @@ export function spawnObject(type, color, model, customScale) {
             // Créer une boîte à donuts (box avec un torus dessus)
             entity = document.createElement('a-entity');
             entity.classList.add('donutbox');
-            
+
             // La boîte
             const box = document.createElement('a-box');
             box.setAttribute('width', '0.15');
@@ -230,7 +309,7 @@ export function spawnObject(type, color, model, customScale) {
             box.setAttribute('color', '#FFB6C1'); // Rose
             box.setAttribute('position', '0 0 0');
             entity.appendChild(box);
-            
+
             // Le donut décoratif sur la boîte
             const donutDeco = document.createElement('a-torus');
             donutDeco.setAttribute('radius', '0.04');
@@ -239,7 +318,7 @@ export function spawnObject(type, color, model, customScale) {
             donutDeco.setAttribute('position', '0 0.06 0');
             donutDeco.setAttribute('rotation', '0 0 0');
             entity.appendChild(donutDeco);
-            
+
             entity.setAttribute('scale', customScale || '0.3 0.3 0.3');
             break;
         default:
@@ -260,7 +339,7 @@ export function spawnObject(type, color, model, customScale) {
         entity.classList.add('trashcan');
         state.trashcans.push(entity);
     }
-    
+
     // Si c'est un speaker, créer l'interface de musique
     if (model && model.includes('BassSpeakers')) {
         // Supprimer l'ancien speaker s'il existe
@@ -269,7 +348,7 @@ export function spawnObject(type, color, model, customScale) {
             console.log('🔊 Removing old speaker(s)');
             stopSpeaker(); // Arrêter la musique
             removeSpeakerUI(); // Supprimer l'UI
-            
+
             oldSpeakers.forEach(oldSpeaker => {
                 // Retirer de spawnedObjects
                 const idx = state.spawnedObjects.indexOf(oldSpeaker);
@@ -278,11 +357,11 @@ export function spawnObject(type, color, model, customScale) {
                 if (oldSpeaker.parentNode) oldSpeaker.parentNode.removeChild(oldSpeaker);
             });
         }
-        
+
         entity.classList.add('speaker');
         console.log('🔊 Speaker spawned, setting up UI...');
         state.debug('🔊 Speaker placé!');
-        
+
         // Attendre que le modèle soit chargé pour créer l'UI et appliquer la physique
         entity.addEventListener('model-loaded', () => {
             console.log('🔊 Speaker model loaded event fired');
@@ -291,7 +370,7 @@ export function spawnObject(type, color, model, customScale) {
             entity.setAttribute('dynamic-body', 'mass:0.5;linearDamping:0.3;angularDamping:0.3');
             createSpeakerUI(entity);
         });
-        
+
         // Fallback: créer l'UI après un délai si model-loaded ne se déclenche pas
         setTimeout(() => {
             console.log('🔊 Checking for speaker UI after timeout...');
@@ -324,9 +403,24 @@ export function spawnObject(type, color, model, customScale) {
 /**
  * Toggle la visibilité du menu
  */
+/**
+ * Helper: obtient le label d'un item à partir du chemin du modèle
+ */
+function getItemLabelFromModel(model) {
+    if (!model) return null;
+    for (const item of INVENTORY_ITEMS) {
+        if (item.model && model.includes(item.model.split('/').pop().replace('.glb', ''))) {
+            return item.label;
+        }
+    }
+    return null;
+}
+
 export function toggleInventory() {
     const menu = state.inventoryEntity;
     if (menu && menu.object3D) {
+        // Rafraîchir le store à chaque ouverture pour bien refléter les unlocks
+        refreshStoreUI();
         const vis = menu.object3D.visible;
         menu.setAttribute('visible', !vis);
         console.log('Toggle Menu:', !vis);
