@@ -24,10 +24,13 @@ import * as state from './modules/state.js';
 import { initCoffeeAudio, initBgMusic, playBgMusic } from './modules/audio.js';
 import { createHUDInventory } from './modules/inventory.js';
 import { createWelcomePanel, setOnWelcomePanelClosed } from './modules/panels.js';
-import { createWristTablet, initOrders, createDebugPanel } from './modules/wrist-tablet.js';
+import { createWristTablet } from './modules/wrist-tablet.js';
+import { initScorePanel } from './modules/score.js';
+import { initLogsPanel } from './modules/log-panel.js';
 import { initStains, startCleaningLoop } from './modules/cleaning.js';
 import { startARSession } from './modules/xr.js';
-import { initStory } from './modules/story.js';
+import { initStory, setOnStoryCompleted } from './modules/story.js';
+import { initUnlocks } from './modules/unlocks.js';
 
 /* global THREE */
 
@@ -82,10 +85,15 @@ window.addEventListener('load', () => {
         initCoffeeAudio();
         initBgMusic();
 
-        // Configurer le callback pour créer la tablette et lancer le mode histoire après fermeture du welcome panel
+        // Configurer le callback pour lancer le mode histoire après fermeture du welcome panel
         setOnWelcomePanelClosed(() => {
             createWristTablet();
             initStory();
+        });
+
+        // Quand le tutoriel est terminé → lancer les commandes
+        setOnStoryCompleted(() => {
+            createWristTablet();
         });
 
         // --- GESTIONNAIRE DU BOUTON START ---
@@ -116,17 +124,19 @@ window.addEventListener('load', () => {
 
                 // Démarrer la session AR
                 const session = await startARSession();
-                
+
                 if (session) {
                     // Lancer la musique de fond
                     playBgMusic();
-                    
-                    // Initialiser les commandes dès maintenant (avant même la fermeture du welcome panel)
-                    initOrders();
-                    
-                    // Créer le panneau de debug VR (pour diagnostiquer)
-                    createDebugPanel();
-                    
+
+                    // Initialiser le système de déverrouillage
+                    initUnlocks();
+
+
+                    // Initialiser le score et les logs (sans les commandes)
+                    initScorePanel();
+                    initLogsPanel();
+
                     // Créer le panneau de bienvenue
                     createWelcomePanel();
 

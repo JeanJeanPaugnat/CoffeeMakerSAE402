@@ -16,6 +16,9 @@ let currentStepIndex = 0;
 let stainsCleanedCount = 0;
 const STAINS_REQUIRED = 5;
 
+// --- CALLBACK quand le story est terminé ---
+let onStoryCompletedCallback = null;
+
 // --- ÉTAPES DU TUTORIEL (dans l'ordre voulu) ---
 const STORY_STEPS = [
     {
@@ -102,14 +105,6 @@ const STORY_STEPS = [
         completed: false
     },
     {
-        id: 'complete_order',
-        icon: '[Order]',
-        label: 'Complete an order',
-        description: 'Finish the order shown below',
-        points: 20,
-        completed: false
-    },
-    {
         id: 'place_speaker',
         icon: '[Speaker]',
         label: 'Place a Speaker',
@@ -127,6 +122,12 @@ export function initStory() {
     isStoryActive = true;
     currentStepIndex = 0;
 
+    // Réinitialiser toutes les étapes du tutoriel
+    for (const step of STORY_STEPS) {
+        step.completed = false;
+        if (step.tracked) step.current = 0;
+    }
+
     console.log('📖 Story mode initialized');
     vrLog('📖 Mode Histoire activé!');
 
@@ -142,6 +143,7 @@ export function initStory() {
 /**
  * Notifie le système story qu'un événement s'est produit
  * Appelé depuis les autres modules
+ * Les étapes peuvent être complétées dans n'importe quel ordre
  * @param {string} eventId - L'identifiant de l'événement
  */
 export function notifyStoryEvent(eventId) {
@@ -150,7 +152,7 @@ export function notifyStoryEvent(eventId) {
     const step = STORY_STEPS.find(s => s.id === eventId);
     if (!step || step.completed) return;
 
-    // Gestion spéciale pour les étapes avec compteur (ex: nettoyer TOUTES les taches)
+    // Si l'étape est tracked (compteur), incrémenter
     if (step.tracked) {
         step.current++;
         console.log(`📖 ${step.icon} ${step.current}/${step.required}`);
@@ -165,7 +167,7 @@ export function notifyStoryEvent(eventId) {
         // Sinon, on continue pour marquer comme complété
     }
 
-    // Marquer comme complété
+    // Marquer comme complété (n'importe quel ordre)
     step.completed = true;
 
     // Bonus points
@@ -175,7 +177,7 @@ export function notifyStoryEvent(eventId) {
     vrLog(`📖 ✅ ${step.label}`);
 
     // Notification de félicitation
-    showARNotification(`✅ ${step.icon} ${step.label} (+${step.points}pts)`, 3000);
+    showARNotification(`[OK] ${step.icon} ${step.label} (+${step.points}pts)`, 3000);
 
     // Avancer l'indicateur vers la prochaine étape non complétée
     advanceToNextStep();
@@ -210,18 +212,38 @@ function checkStoryCompletion() {
         vrLog('📖 🎉 Tutoriel terminé!');
 
         // Bonus de complétion
-        addScore(50, 'Tutoriel terminé!');
+        addScore(50, 'Guide complete!');
 
-        setTimeout(() => {
-            showARNotification('🎉 Bravo! Tutoriel terminé! +50pts\nÀ toi de jouer maintenant!', 5000);
-        }, 500);
+        // Cacher le panneau guide immédiatement
+        hideStoryPanel();
+        isStoryActive = false;
 
-        // Le panneau disparaît automatiquement
+        // Message de félicitation en anglais
+        showARNotification('Well done! Orders are on the way, complete them to earn points!', 5000);
+
+        // Lancer les commandes après 3s
         setTimeout(() => {
-            hideStoryPanel();
-            isStoryActive = false;
-        }, 6000);
+            console.log('Story: firing onStoryCompletedCallback');
+            if (onStoryCompletedCallback) {
+                try {
+                    onStoryCompletedCallback();
+                    console.log('Story: callback executed OK');
+                } catch (e) {
+                    console.error('Story: callback error:', e);
+                }
+            } else {
+                console.warn('Story: no callback registered');
+            }
+        }, 3000);
     }
+}
+
+/**
+ * Définit le callback appelé quand le tutoriel est terminé
+ * @param {Function} callback
+ */
+export function setOnStoryCompleted(callback) {
+    onStoryCompletedCallback = callback;
 }
 
 /**
@@ -231,12 +253,14 @@ function checkStoryCompletion() {
 function createStoryPanel() {
     if (storyPanel) return;
 
-    const cam = document.getElementById('cam');
-    if (!cam) return;
+    // Placer le panneau dans la scène (pas enfant de la caméra)
+    const sceneEl = document.querySelector('a-scene');
+    if (!sceneEl) return;
 
     storyPanel = document.createElement('a-entity');
     storyPanel.id = 'story-panel';
-    storyPanel.setAttribute('position', '-0.1 0.05 -0.8');
+    // Position fixe dans le monde (ex: devant le joueur, hauteur yeux)
+    storyPanel.setAttribute('position', '0 1.5 -1.2');
 
     // Fond principal
     const bg = document.createElement('a-plane');
@@ -308,7 +332,7 @@ function createStoryPanel() {
 
     // Texte de progression
     const progressText = document.createElement('a-text');
-    progressText.setAttribute('value', '0/12');
+    progressText.setAttribute('value', `0/${STORY_STEPS.length}`);
     progressText.setAttribute('align', 'center');
     progressText.setAttribute('position', '0 -0.35 0.01');
     progressText.setAttribute('scale', '0.05 0.05 0.05');
@@ -316,8 +340,8 @@ function createStoryPanel() {
     progressText.id = 'story-progress-text';
     storyPanel.appendChild(progressText);
 
-    cam.appendChild(storyPanel);
-    console.log('📖 Story panel created');
+    sceneEl.appendChild(storyPanel);
+    console.log('📖 Story panel created (fixed in world)');
 }
 
 /**
