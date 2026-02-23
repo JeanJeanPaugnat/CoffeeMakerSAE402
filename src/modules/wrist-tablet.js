@@ -114,8 +114,9 @@ function doResetOrder() {
 
     vrLog(`📋 New: ${currentOrder.required}x ${currentOrder.icon}`);
     console.log(`✅ New order: ${currentOrder.required}x ${currentOrder.label}`);
-    showARNotification('📋 Nouvelle commande!', 2000);
-    
+    showARNotification('📋 New order!', 2000);
+
+    // MAJ immédiate du panneau pour afficher la nouvelle commande
     updatePanel();
 }
 
@@ -227,20 +228,24 @@ function updatePanel() {
         vrLog('⚠️ No panel text!');
         return;
     }
-    
+
     const lines = [];
-    
+
     // Afficher la commande avec progrès
+    let color = '#00ff00';
     if (orderCompleted) {
-        lines.push(`✅ DONE!`);
-        lines.push(`⏳ Next order...`);
+        lines.push('DONE!');
+        lines.push('Next order...');
+        color = '#00b894'; // Green for done
     } else {
-        lines.push(`${currentOrder.icon} ${currentOrder.label}`);
+        lines.push(`${currentOrder.label}`);
         lines.push(`${itemsCreatedCount}/${currentOrder.required}`);
+        color = '#00ff00'; // Green for active
     }
-    
+
     const text = lines.join('\n');
-    ordersPanelText.setAttribute('value', text);
+    // Force A-Frame text update
+    ordersPanelText.setAttribute('text', `value: ${text}; color: ${color}; align: center; wrapCount: 35`);
     vrLog(`📋 ${lines[0]}`);
     console.log('[updatePanel]', text);
 }
@@ -293,18 +298,19 @@ function onItemCreated(itemType) {
         orderCompleted = true;
         incrementOrdersCompleted();
         orderCompletedTime = Date.now(); // Enregistrer le timestamp
-        
+
         // Calculer les points de la commande (points × quantité)
         const orderPoints = currentOrder.points * currentOrder.required;
         addScore(orderPoints, currentOrder.label);
-        
+
         vrLog(`✅ COMPLETE! +${orderPoints}pts`);
         vrLog(`⏳ Next in 2s...`);
         showARNotification(`🎉 Commande terminée! +${orderPoints} pts`, 3000);
 
         // Story mode
         notifyStoryEvent('complete_order');
-        
+
+        // MAJ immédiate du panneau pour afficher DONE!
         updatePanel();
         console.log('⏰ Order completed, waiting 2s via loop...');
     } else {

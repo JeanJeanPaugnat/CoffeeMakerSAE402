@@ -231,12 +231,14 @@ function checkStoryCompletion() {
 function createStoryPanel() {
     if (storyPanel) return;
 
-    const cam = document.getElementById('cam');
-    if (!cam) return;
+    // Placer le panneau dans la scène (pas enfant de la caméra)
+    const sceneEl = document.querySelector('a-scene');
+    if (!sceneEl) return;
 
     storyPanel = document.createElement('a-entity');
     storyPanel.id = 'story-panel';
-    storyPanel.setAttribute('position', '-0.1 0.05 -0.8');
+    // Position fixe dans le monde (ex: devant le joueur, hauteur yeux)
+    storyPanel.setAttribute('position', '0 1.5 -2');
 
     // Fond principal
     const bg = document.createElement('a-plane');
@@ -316,8 +318,8 @@ function createStoryPanel() {
     progressText.id = 'story-progress-text';
     storyPanel.appendChild(progressText);
 
-    cam.appendChild(storyPanel);
-    console.log('📖 Story panel created');
+    sceneEl.appendChild(storyPanel);
+    console.log('📖 Story panel created (fixed in world)');
 }
 
 /**
