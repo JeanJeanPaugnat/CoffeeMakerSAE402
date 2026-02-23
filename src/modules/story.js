@@ -127,6 +127,12 @@ export function initStory() {
     isStoryActive = true;
     currentStepIndex = 0;
 
+    // Réinitialiser toutes les étapes du tutoriel
+    for (const step of STORY_STEPS) {
+        step.completed = false;
+        if (step.tracked) step.current = 0;
+    }
+
     console.log('📖 Story mode initialized');
     vrLog('📖 Mode Histoire activé!');
 
@@ -150,7 +156,7 @@ export function notifyStoryEvent(eventId) {
     const step = STORY_STEPS.find(s => s.id === eventId);
     if (!step || step.completed) return;
 
-    // Gestion spéciale pour les étapes avec compteur (ex: nettoyer TOUTES les taches)
+    // Si l'étape est tracked (compteur), on autorise l'incrémentation à tout moment
     if (step.tracked) {
         step.current++;
         console.log(`📖 ${step.icon} ${step.current}/${step.required}`);
@@ -163,6 +169,12 @@ export function notifyStoryEvent(eventId) {
             return;
         }
         // Sinon, on continue pour marquer comme complété
+    } else {
+        // Pour les autres étapes, on ne valide que si c'est l'étape courante
+        if (STORY_STEPS[currentStepIndex] !== step) {
+            // Ce n'est pas l'étape attendue, on ignore
+            return;
+        }
     }
 
     // Marquer comme complété
@@ -238,7 +250,7 @@ function createStoryPanel() {
     storyPanel = document.createElement('a-entity');
     storyPanel.id = 'story-panel';
     // Position fixe dans le monde (ex: devant le joueur, hauteur yeux)
-    storyPanel.setAttribute('position', '0 1.5 -2');
+    storyPanel.setAttribute('position', '0 1.5 -1.2');
 
     // Fond principal
     const bg = document.createElement('a-plane');

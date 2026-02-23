@@ -28,6 +28,7 @@ import { createWristTablet, initOrders, createDebugPanel } from './modules/wrist
 import { initStains, startCleaningLoop } from './modules/cleaning.js';
 import { startARSession } from './modules/xr.js';
 import { initStory } from './modules/story.js';
+import { initUnlocks } from './modules/unlocks.js';
 
 /* global THREE */
 
@@ -116,17 +117,20 @@ window.addEventListener('load', () => {
 
                 // Démarrer la session AR
                 const session = await startARSession();
-                
+
                 if (session) {
                     // Lancer la musique de fond
                     playBgMusic();
-                    
+
+                    // Initialiser le système de déverrouillage
+                    initUnlocks();
+
                     // Initialiser les commandes dès maintenant (avant même la fermeture du welcome panel)
                     initOrders();
-                    
+
                     // Créer le panneau de debug VR (pour diagnostiquer)
                     createDebugPanel();
-                    
+
                     // Créer le panneau de bienvenue
                     createWelcomePanel();
 
