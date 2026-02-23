@@ -102,14 +102,6 @@ const STORY_STEPS = [
         completed: false
     },
     {
-        id: 'complete_order',
-        icon: '[Order]',
-        label: 'Complete an order',
-        description: 'Finish the order shown below',
-        points: 20,
-        completed: false
-    },
-    {
         id: 'place_speaker',
         icon: '[Speaker]',
         label: 'Place a Speaker',
@@ -148,6 +140,7 @@ export function initStory() {
 /**
  * Notifie le système story qu'un événement s'est produit
  * Appelé depuis les autres modules
+ * Les étapes peuvent être complétées dans n'importe quel ordre
  * @param {string} eventId - L'identifiant de l'événement
  */
 export function notifyStoryEvent(eventId) {
@@ -156,7 +149,7 @@ export function notifyStoryEvent(eventId) {
     const step = STORY_STEPS.find(s => s.id === eventId);
     if (!step || step.completed) return;
 
-    // Si l'étape est tracked (compteur), on autorise l'incrémentation à tout moment
+    // Si l'étape est tracked (compteur), incrémenter
     if (step.tracked) {
         step.current++;
         console.log(`📖 ${step.icon} ${step.current}/${step.required}`);
@@ -169,15 +162,9 @@ export function notifyStoryEvent(eventId) {
             return;
         }
         // Sinon, on continue pour marquer comme complété
-    } else {
-        // Pour les autres étapes, on ne valide que si c'est l'étape courante
-        if (STORY_STEPS[currentStepIndex] !== step) {
-            // Ce n'est pas l'étape attendue, on ignore
-            return;
-        }
     }
 
-    // Marquer comme complété
+    // Marquer comme complété (n'importe quel ordre)
     step.completed = true;
 
     // Bonus points
@@ -187,7 +174,7 @@ export function notifyStoryEvent(eventId) {
     vrLog(`📖 ✅ ${step.label}`);
 
     // Notification de félicitation
-    showARNotification(`✅ ${step.icon} ${step.label} (+${step.points}pts)`, 3000);
+    showARNotification(`[OK] ${step.icon} ${step.label} (+${step.points}pts)`, 3000);
 
     // Avancer l'indicateur vers la prochaine étape non complétée
     advanceToNextStep();
@@ -322,7 +309,7 @@ function createStoryPanel() {
 
     // Texte de progression
     const progressText = document.createElement('a-text');
-    progressText.setAttribute('value', '0/12');
+    progressText.setAttribute('value', `0/${STORY_STEPS.length}`);
     progressText.setAttribute('align', 'center');
     progressText.setAttribute('position', '0 -0.35 0.01');
     progressText.setAttribute('scale', '0.05 0.05 0.05');
