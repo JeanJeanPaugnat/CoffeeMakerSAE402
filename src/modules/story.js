@@ -20,101 +20,100 @@ const STAINS_REQUIRED = 5;
 const STORY_STEPS = [
     {
         id: 'open_store',
-        icon: '📦',
-        label: 'Ouvrir le VR Store',
-        description: 'Appuie sur Y pour ouvrir le magasin',
+        icon: '[Store]',
+        label: 'Open the VR Store',
+        description: 'Press Y to open the store',
         points: 5,
         completed: false
     },
     {
         id: 'place_broom',
-        icon: '🧹',
-        label: 'Placer un Balai',
-        description: 'Sélectionne BROOM dans le store',
+        icon: '[Broom]',
+        label: 'Place a Broom',
+        description: 'Select BROOM in the store',
         points: 10,
         completed: false
     },
     {
         id: 'grab_object',
-        icon: '✋',
-        label: 'Attraper un objet',
-        description: 'Approche ta main et appuie sur Trigger',
+        icon: '[Grab]',
+        label: 'Grab an object',
+        description: 'Grab with the trigger',
         points: 5,
         completed: false
     },
     {
         id: 'clean_stain',
-        icon: '🧹',
-        label: 'Nettoyer les taches',
-        description: 'Attrape le balai et frotte les taches',
+        icon: '[Clean]',
+        label: 'Clean all stains',
+        description: 'Use the broom to clean stains',
         points: 15,
         completed: false,
-        // Compteur de progression
         tracked: true,
         current: 0,
         required: 5
     },
     {
         id: 'place_coffee_machine',
-        icon: '☕',
-        label: 'Placer une Machine à Café',
-        description: 'Sélectionne COFFEE dans le store',
+        icon: '[Coffee]',
+        label: 'Place a Coffee Machine',
+        description: 'Select COFFEE in the store',
         points: 10,
         completed: false
     },
     {
         id: 'brew_coffee',
-        icon: '☕',
-        label: 'Préparer un café',
-        description: 'Vise la machine et appuie sur B',
+        icon: '[Coffee]',
+        label: 'Brew a coffee',
+        description: 'Aim at the machine and press B',
         points: 10,
         completed: false
     },
     {
         id: 'place_donut_box',
-        icon: '🍩',
-        label: 'Placer une Boîte de Donuts',
-        description: 'Sélectionne DONUT dans le store',
+        icon: '[Donut]',
+        label: 'Place a Donut Box',
+        description: 'Select DONUT in the store',
         points: 10,
         completed: false
     },
     {
         id: 'make_donut',
-        icon: '🍩',
-        label: 'Préparer un donut',
-        description: 'Vise la boîte et appuie sur B',
+        icon: '[Donut]',
+        label: 'Make a donut',
+        description: 'Aim at the box and press B',
         points: 10,
         completed: false
     },
     {
         id: 'place_trashcan',
-        icon: '🗑️',
-        label: 'Placer une Poubelle',
-        description: 'Sélectionne POUBELLE dans le store',
+        icon: '[Trash]',
+        label: 'Place a Trashcan',
+        description: 'Select TRASHCAN in the store',
         points: 10,
         completed: false
     },
     {
         id: 'trash_object',
-        icon: '🗑️',
-        label: 'Jeter un objet',
-        description: 'Approche un objet de la poubelle',
+        icon: '[Trash]',
+        label: 'Throw an object away',
+        description: 'Bring an object to the trashcan',
         points: 10,
         completed: false
     },
     {
         id: 'complete_order',
-        icon: '📋',
-        label: 'Compléter une commande',
-        description: 'Termine la commande affichée en bas',
+        icon: '[Order]',
+        label: 'Complete an order',
+        description: 'Finish the order shown below',
         points: 20,
         completed: false
     },
     {
         id: 'place_speaker',
-        icon: '🔊',
-        label: 'Placer un Speaker',
-        description: 'Sélectionne SPEAKER dans le store',
+        icon: '[Speaker]',
+        label: 'Place a Speaker',
+        description: 'Select SPEAKER in the store',
         points: 10,
         completed: false
     }
@@ -324,7 +323,7 @@ function createStoryPanel() {
 /**
  * Met à jour l'affichage du panneau checklist
  */
-function updateStoryPanel() {
+export function updateStoryPanel() {
     if (!storyPanel || storyPanelTexts.length === 0) return;
 
     const completedCount = STORY_STEPS.filter(s => s.completed).length;
@@ -336,24 +335,25 @@ function updateStoryPanel() {
         let prefix, color;
 
         if (step.completed) {
-            prefix = '✅';
-            color = '#00b894'; // Vert
+            prefix = '[X]';
+            color = '#00b894'; // Green
         } else if (index === currentStepIndex) {
-            prefix = '👉';
-            color = '#fdcb6e'; // Jaune - étape active
+            prefix = '>';
+            color = '#fdcb6e'; // Yellow
         } else {
-            prefix = '⬜';
-            color = '#636e72'; // Gris
+            prefix = '[ ]';
+            color = '#636e72'; // Gray
         }
 
-        // Afficher le compteur pour les étapes trackées non complétées
+        // Show counter for tracked steps
         let label = step.label;
         if (step.tracked && !step.completed) {
             label = `${step.label} (${step.current}/${step.required})`;
         }
 
-        textEl.setAttribute('value', `${prefix} ${step.icon} ${label}`);
-        textEl.setAttribute('color', color);
+        const fullText = `${prefix} ${step.icon} ${label}`;
+        // Force color update for A-Frame text
+        textEl.setAttribute('text', `value: ${fullText}; color: ${color}; align: left; wrapCount: 40`);
     });
 
     // Mettre à jour la barre de progression
