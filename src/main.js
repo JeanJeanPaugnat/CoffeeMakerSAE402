@@ -27,6 +27,7 @@ import { createWelcomePanel, setOnWelcomePanelClosed } from './modules/panels.js
 import { createWristTablet, initOrders, createDebugPanel } from './modules/wrist-tablet.js';
 import { initStains, startCleaningLoop } from './modules/cleaning.js';
 import { startARSession } from './modules/xr.js';
+import { initStory } from './modules/story.js';
 
 /* global THREE */
 
@@ -81,8 +82,11 @@ window.addEventListener('load', () => {
         initCoffeeAudio();
         initBgMusic();
 
-        // Configurer le callback pour créer la tablette après fermeture du welcome panel
-        setOnWelcomePanelClosed(createWristTablet);
+        // Configurer le callback pour créer la tablette et lancer le mode histoire après fermeture du welcome panel
+        setOnWelcomePanelClosed(() => {
+            createWristTablet();
+            initStory();
+        });
 
         // --- GESTIONNAIRE DU BOUTON START ---
         startBtn.onclick = async () => {

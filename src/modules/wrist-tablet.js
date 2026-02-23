@@ -7,6 +7,7 @@ import * as state from './state.js';
 import { showARNotification } from './panels.js';
 import { vrLog, initLogsPanel } from './log-panel.js';
 import { addScore, incrementOrdersCompleted, resetScore, initScorePanel } from './score.js';
+import { notifyStoryEvent } from './story.js';
 
 // --- ÉTAT ---
 let isInitialized = false;
@@ -300,6 +301,9 @@ function onItemCreated(itemType) {
         vrLog(`✅ COMPLETE! +${orderPoints}pts`);
         vrLog(`⏳ Next in 2s...`);
         showARNotification(`🎉 Commande terminée! +${orderPoints} pts`, 3000);
+
+        // Story mode
+        notifyStoryEvent('complete_order');
         
         updatePanel();
         console.log('⏰ Order completed, waiting 2s via loop...');

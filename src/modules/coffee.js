@@ -3,6 +3,7 @@
  */
 
 import * as state from './state.js';
+import { notifyStoryEvent, updateStoryPanel } from './story.js';
 import { playCoffeeSound } from './audio.js';
 import { onCoffeeCreated } from './wrist-tablet.js';
 
@@ -39,6 +40,10 @@ export function spawnCoffeeCup(machineEntity) {
     console.log('☕ Tasse de café créée');
     console.log('☕ spawnedObjects count:', state.spawnedObjects.length);
     state.debug('☕ Café prêt!');
+
+    // Story mode
+    notifyStoryEvent('brew_coffee');
+    updateStoryPanel();
     
     // Notifier le panneau de commandes
     console.log('☕ About to call onCoffeeCreated...');

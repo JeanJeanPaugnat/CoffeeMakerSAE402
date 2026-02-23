@@ -4,6 +4,7 @@
 
 import * as state from './state.js';
 import { createSpeakerUI, stopSpeaker, removeSpeakerUI } from './speaker.js';
+import { notifyStoryEvent, updateStoryPanel } from './story.js';
 
 /**
  * Configuration des items disponibles dans le store
@@ -309,6 +310,15 @@ export function spawnObject(type, color, model, customScale) {
 
     state.debug(`Spawné: ${type}`);
     console.log(`📦 Spawned ${type} at`, spawnPos);
+
+    // Story mode: notifier le placement d'objets spécifiques
+    if (model) {
+        if (model.includes('CoffeeMachine')) { notifyStoryEvent('place_coffee_machine'); updateStoryPanel(); }
+        if (model.includes('BoxDonuts')) { notifyStoryEvent('place_donut_box'); updateStoryPanel(); }
+        if (model.includes('Trashcan')) { notifyStoryEvent('place_trashcan'); updateStoryPanel(); }
+        if (model.includes('Broom')) { notifyStoryEvent('place_broom'); updateStoryPanel(); }
+        if (model.includes('BassSpeakers')) { notifyStoryEvent('place_speaker'); updateStoryPanel(); }
+    }
 }
 
 /**
@@ -320,5 +330,11 @@ export function toggleInventory() {
         const vis = menu.object3D.visible;
         menu.setAttribute('visible', !vis);
         console.log('Toggle Menu:', !vis);
+
+        // Story mode: notifier l'ouverture du store
+        if (!vis) {
+            notifyStoryEvent('open_store');
+            updateStoryPanel();
+        }
     }
 }

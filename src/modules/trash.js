@@ -3,6 +3,7 @@
  */
 
 import * as state from './state.js';
+import { notifyStoryEvent, updateStoryPanel } from './story.js';
 
 /**
  * Supprime un objet de la scène
@@ -27,6 +28,10 @@ export function removeObjectFromScene(objEl) {
 
     console.log('🗑️ Objet supprimé par la poubelle!');
     state.debug('🗑️ Objet jeté!');
+
+    // Story mode
+    notifyStoryEvent('trash_object');
+    updateStoryPanel();
 }
 
 /**

@@ -3,6 +3,7 @@
  */
 
 import * as state from './state.js';
+import { notifyStoryEvent, updateStoryPanel } from './story.js';
 
 /**
  * Attrape l'objet le plus proche du contrôleur
@@ -36,6 +37,10 @@ export function grab(controller) {
     }
 
     state.debug('GRAB!');
+
+    // Story mode
+    notifyStoryEvent('grab_object');
+    updateStoryPanel();
 
     state.setGrabbed(true);
     state.setGrabController(controller);
