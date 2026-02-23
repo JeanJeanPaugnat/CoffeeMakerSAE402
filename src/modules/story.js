@@ -13,8 +13,10 @@ let isStoryActive = false;
 let storyPanel = null;
 let storyPanelTexts = [];
 let currentStepIndex = 0;
+let stainsCleanedCount = 0;
+const STAINS_REQUIRED = 5;
 
-// --- ÉTAPES DU TUTORIEL ---
+// --- ÉTAPES DU TUTORIEL (dans l'ordre voulu) ---
 const STORY_STEPS = [
     {
         id: 'open_store',
@@ -23,6 +25,34 @@ const STORY_STEPS = [
         description: 'Appuie sur Y pour ouvrir le magasin',
         points: 5,
         completed: false
+    },
+    {
+        id: 'place_broom',
+        icon: '🧹',
+        label: 'Placer un Balai',
+        description: 'Sélectionne BROOM dans le store',
+        points: 10,
+        completed: false
+    },
+    {
+        id: 'grab_object',
+        icon: '✋',
+        label: 'Attraper un objet',
+        description: 'Approche ta main et appuie sur Trigger',
+        points: 5,
+        completed: false
+    },
+    {
+        id: 'clean_stain',
+        icon: '🧹',
+        label: 'Nettoyer les taches',
+        description: 'Attrape le balai et frotte les taches',
+        points: 15,
+        completed: false,
+        // Compteur de progression
+        tracked: true,
+        current: 0,
+        required: 5
     },
     {
         id: 'place_coffee_machine',
@@ -38,14 +68,6 @@ const STORY_STEPS = [
         label: 'Préparer un café',
         description: 'Vise la machine et appuie sur B',
         points: 10,
-        completed: false
-    },
-    {
-        id: 'grab_object',
-        icon: '✋',
-        label: 'Attraper un objet',
-        description: 'Approche ta main et appuie sur Trigger',
-        points: 5,
         completed: false
     },
     {
@@ -81,19 +103,11 @@ const STORY_STEPS = [
         completed: false
     },
     {
-        id: 'place_broom',
-        icon: '🧹',
-        label: 'Placer un Balai',
-        description: 'Sélectionne BROOM dans le store',
-        points: 10,
-        completed: false
-    },
-    {
-        id: 'clean_stain',
-        icon: '🧹',
-        label: 'Nettoyer une tache',
-        description: 'Attrape le balai et frotte une tache',
-        points: 15,
+        id: 'complete_order',
+        icon: '📋',
+        label: 'Compléter une commande',
+        description: 'Termine la commande affichée en bas',
+        points: 20,
         completed: false
     },
     {
@@ -102,14 +116,6 @@ const STORY_STEPS = [
         label: 'Placer un Speaker',
         description: 'Sélectionne SPEAKER dans le store',
         points: 10,
-        completed: false
-    },
-    {
-        id: 'complete_order',
-        icon: '📋',
-        label: 'Compléter une commande',
-        description: 'Termine la commande affichée en bas',
-        points: 20,
         completed: false
     }
 ];
@@ -145,11 +151,23 @@ export function notifyStoryEvent(eventId) {
     const step = STORY_STEPS.find(s => s.id === eventId);
     if (!step || step.completed) return;
 
+    // Gestion spéciale pour les étapes avec compteur (ex: nettoyer TOUTES les taches)
+    if (step.tracked) {
+        step.current++;
+        console.log(`📖 ${step.icon} ${step.current}/${step.required}`);
+        vrLog(`${step.icon} ${step.current}/${step.required}`);
+
+        // Pas encore terminé → juste mettre à jour l'affichage
+        if (step.current < step.required) {
+            showARNotification(`${step.icon} ${step.current}/${step.required}`, 1500);
+            updateStoryPanel();
+            return;
+        }
+        // Sinon, on continue pour marquer comme complété
+    }
+
     // Marquer comme complété
     step.completed = true;
-
-    // Trouver l'index de l'étape
-    const stepIndex = STORY_STEPS.indexOf(step);
 
     // Bonus points
     addScore(step.points, `Story: ${step.label}`);
@@ -193,16 +211,17 @@ function checkStoryCompletion() {
         vrLog('📖 🎉 Tutoriel terminé!');
 
         // Bonus de complétion
-        addScore(50, 'Story Mode Completed!');
+        addScore(50, 'Tutoriel terminé!');
 
         setTimeout(() => {
-            showARNotification('🎉 Tutoriel terminé! +50pts bonus!\nÀ toi de jouer maintenant!', 5000);
+            showARNotification('🎉 Bravo! Tutoriel terminé! +50pts\nÀ toi de jouer maintenant!', 5000);
         }, 500);
 
-        // Fermer le panneau après quelques secondes
+        // Le panneau disparaît automatiquement
         setTimeout(() => {
             hideStoryPanel();
-        }, 8000);
+            isStoryActive = false;
+        }, 6000);
     }
 }
 
@@ -218,7 +237,7 @@ function createStoryPanel() {
 
     storyPanel = document.createElement('a-entity');
     storyPanel.id = 'story-panel';
-    storyPanel.setAttribute('position', '-0.5 0.05 -0.8');
+    storyPanel.setAttribute('position', '-0.1 0.05 -0.8');
 
     // Fond principal
     const bg = document.createElement('a-plane');
@@ -327,7 +346,13 @@ function updateStoryPanel() {
             color = '#636e72'; // Gris
         }
 
-        textEl.setAttribute('value', `${prefix} ${step.icon} ${step.label}`);
+        // Afficher le compteur pour les étapes trackées non complétées
+        let label = step.label;
+        if (step.tracked && !step.completed) {
+            label = `${step.label} (${step.current}/${step.required})`;
+        }
+
+        textEl.setAttribute('value', `${prefix} ${step.icon} ${label}`);
         textEl.setAttribute('color', color);
     });
 
