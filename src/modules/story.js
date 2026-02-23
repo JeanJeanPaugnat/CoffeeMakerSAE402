@@ -16,6 +16,9 @@ let currentStepIndex = 0;
 let stainsCleanedCount = 0;
 const STAINS_REQUIRED = 5;
 
+// --- CALLBACK quand le story est terminé ---
+let onStoryCompletedCallback = null;
+
 // --- ÉTAPES DU TUTORIEL (dans l'ordre voulu) ---
 const STORY_STEPS = [
     {
@@ -209,18 +212,38 @@ function checkStoryCompletion() {
         vrLog('📖 🎉 Tutoriel terminé!');
 
         // Bonus de complétion
-        addScore(50, 'Tutoriel terminé!');
+        addScore(50, 'Guide complete!');
 
-        setTimeout(() => {
-            showARNotification('🎉 Bravo! Tutoriel terminé! +50pts\nÀ toi de jouer maintenant!', 5000);
-        }, 500);
+        // Cacher le panneau guide immédiatement
+        hideStoryPanel();
+        isStoryActive = false;
 
-        // Le panneau disparaît automatiquement
+        // Message de félicitation en anglais
+        showARNotification('Well done! Orders are on the way, complete them to earn points!', 5000);
+
+        // Lancer les commandes après 3s
         setTimeout(() => {
-            hideStoryPanel();
-            isStoryActive = false;
-        }, 6000);
+            console.log('Story: firing onStoryCompletedCallback');
+            if (onStoryCompletedCallback) {
+                try {
+                    onStoryCompletedCallback();
+                    console.log('Story: callback executed OK');
+                } catch (e) {
+                    console.error('Story: callback error:', e);
+                }
+            } else {
+                console.warn('Story: no callback registered');
+            }
+        }, 3000);
     }
+}
+
+/**
+ * Définit le callback appelé quand le tutoriel est terminé
+ * @param {Function} callback
+ */
+export function setOnStoryCompleted(callback) {
+    onStoryCompletedCallback = callback;
 }
 
 /**
