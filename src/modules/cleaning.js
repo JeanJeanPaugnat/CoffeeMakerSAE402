@@ -3,7 +3,7 @@
  */
 
 import * as state from './state.js';
-import { notifyStoryEvent } from './story.js';
+import { notifyStoryEvent, updateStoryPanel } from './story.js';
 
 // Modèles de taches de sang disponibles
 const BLOOD_MODELS = [
@@ -81,6 +81,7 @@ export function checkCleaning() {
 
                 // Story mode
                 notifyStoryEvent('clean_stain');
+                updateStoryPanel();
 
                 // Occasionally spawn new stain
                 if (Math.random() > 0.5) spawnRandomStain();

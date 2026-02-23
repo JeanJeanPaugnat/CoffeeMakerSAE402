@@ -3,7 +3,7 @@
  */
 
 import * as state from './state.js';
-import { notifyStoryEvent } from './story.js';
+import { notifyStoryEvent, updateStoryPanel } from './story.js';
 import { playCoffeeSound } from './audio.js';
 import { onCoffeeCreated } from './wrist-tablet.js';
 
@@ -43,6 +43,7 @@ export function spawnCoffeeCup(machineEntity) {
 
     // Story mode
     notifyStoryEvent('brew_coffee');
+    updateStoryPanel();
     
     // Notifier le panneau de commandes
     console.log('☕ About to call onCoffeeCreated...');

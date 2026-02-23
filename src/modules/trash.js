@@ -3,7 +3,7 @@
  */
 
 import * as state from './state.js';
-import { notifyStoryEvent } from './story.js';
+import { notifyStoryEvent, updateStoryPanel } from './story.js';
 
 /**
  * Supprime un objet de la scène
@@ -31,6 +31,7 @@ export function removeObjectFromScene(objEl) {
 
     // Story mode
     notifyStoryEvent('trash_object');
+    updateStoryPanel();
 }
 
 /**

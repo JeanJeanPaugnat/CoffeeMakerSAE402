@@ -4,7 +4,7 @@
 
 import * as state from './state.js';
 import { createSpeakerUI, stopSpeaker, removeSpeakerUI } from './speaker.js';
-import { notifyStoryEvent } from './story.js';
+import { notifyStoryEvent, updateStoryPanel } from './story.js';
 
 /**
  * Configuration des items disponibles dans le store
@@ -313,11 +313,11 @@ export function spawnObject(type, color, model, customScale) {
 
     // Story mode: notifier le placement d'objets spécifiques
     if (model) {
-        if (model.includes('CoffeeMachine')) notifyStoryEvent('place_coffee_machine');
-        if (model.includes('BoxDonuts')) notifyStoryEvent('place_donut_box');
-        if (model.includes('Trashcan')) notifyStoryEvent('place_trashcan');
-        if (model.includes('Broom')) notifyStoryEvent('place_broom');
-        if (model.includes('BassSpeakers')) notifyStoryEvent('place_speaker');
+        if (model.includes('CoffeeMachine')) { notifyStoryEvent('place_coffee_machine'); updateStoryPanel(); }
+        if (model.includes('BoxDonuts')) { notifyStoryEvent('place_donut_box'); updateStoryPanel(); }
+        if (model.includes('Trashcan')) { notifyStoryEvent('place_trashcan'); updateStoryPanel(); }
+        if (model.includes('Broom')) { notifyStoryEvent('place_broom'); updateStoryPanel(); }
+        if (model.includes('BassSpeakers')) { notifyStoryEvent('place_speaker'); updateStoryPanel(); }
     }
 }
 
@@ -334,6 +334,7 @@ export function toggleInventory() {
         // Story mode: notifier l'ouverture du store
         if (!vis) {
             notifyStoryEvent('open_store');
+            updateStoryPanel();
         }
     }
 }
