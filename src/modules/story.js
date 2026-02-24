@@ -207,34 +207,41 @@ function advanceToNextStep() {
  */
 function checkStoryCompletion() {
     const allDone = STORY_STEPS.every(s => s.completed);
-    if (allDone) {
+    if (allDone && isStoryActive) {
         console.log('📖 🎉 STORY MODE COMPLETE!');
         vrLog('📖 🎉 Tutoriel terminé!');
 
         // Bonus de complétion
         addScore(50, 'Guide complete!');
 
-        // Cacher le panneau guide immédiatement
-        hideStoryPanel();
         isStoryActive = false;
 
-        // Message de félicitation en anglais
-        showARNotification('Well done! Orders are on the way, complete them to earn points!', 5000);
+        // Message de félicitation
+        showARNotification('Well done! Press START ORDERS on the panel!', 5000);
+    }
+}
 
-        // Lancer les commandes après 3s
-        setTimeout(() => {
-            console.log('Story: firing onStoryCompletedCallback');
-            if (onStoryCompletedCallback) {
-                try {
-                    onStoryCompletedCallback();
-                    console.log('Story: callback executed OK');
-                } catch (e) {
-                    console.error('Story: callback error:', e);
-                }
-            } else {
-                console.warn('Story: no callback registered');
-            }
-        }, 3000);
+/**
+ * Appelé quand le joueur appuie sur le bouton START ORDERS
+ * Exporté pour être utilisé par xr.js
+ */
+export function triggerStoryComplete() {
+    console.log('📖 START ORDERS button pressed!');
+    vrLog('📖 Lancement des commandes...');
+
+    // Cacher le panneau
+    hideStoryPanel();
+
+    // Lancer le callback
+    if (onStoryCompletedCallback) {
+        try {
+            onStoryCompletedCallback();
+            console.log('Story: callback executed OK');
+        } catch (e) {
+            console.error('Story: callback error:', e);
+        }
+    } else {
+        console.warn('Story: no callback registered');
     }
 }
 
@@ -340,6 +347,28 @@ function createStoryPanel() {
     progressText.id = 'story-progress-text';
     storyPanel.appendChild(progressText);
 
+    // Bouton START ORDERS (grisé et désactivé au départ)
+    const startBtn = document.createElement('a-box');
+    startBtn.setAttribute('width', '0.3');
+    startBtn.setAttribute('height', '0.06');
+    startBtn.setAttribute('depth', '0.02');
+    startBtn.setAttribute('color', '#2d3436');
+    startBtn.setAttribute('position', '0 -0.32 0.02');
+    startBtn.setAttribute('visible', 'false');
+    startBtn.id = 'story-start-orders-btn';
+
+    const startBtnText = document.createElement('a-text');
+    startBtnText.setAttribute('value', 'START ORDERS');
+    startBtnText.setAttribute('align', 'center');
+    startBtnText.setAttribute('position', '0 0.01 0.02');
+    startBtnText.setAttribute('scale', '0.08 0.08 0.08');
+    startBtnText.setAttribute('color', '#636e72');
+    startBtnText.setAttribute('font', 'mozillavr');
+    startBtnText.id = 'story-start-orders-text';
+    startBtn.appendChild(startBtnText);
+
+    storyPanel.appendChild(startBtn);
+
     sceneEl.appendChild(storyPanel);
     console.log('📖 Story panel created (fixed in world)');
 }
@@ -381,6 +410,7 @@ export function updateStoryPanel() {
     });
 
     // Mettre à jour la barre de progression
+    const progressBg = storyPanel.querySelector('#story-progress-bg');
     const progressBar = storyPanel.querySelector('#story-progress-bar');
     const progressText = storyPanel.querySelector('#story-progress-text');
 
@@ -395,6 +425,28 @@ export function updateStoryPanel() {
 
     if (progressText) {
         progressText.setAttribute('value', `${completedCount}/${STORY_STEPS.length}`);
+    }
+
+    // Activer/désactiver le bouton START ORDERS
+    const allDone = completedCount === STORY_STEPS.length;
+    const startBtn = storyPanel.querySelector('#story-start-orders-btn');
+    const startBtnText = storyPanel.querySelector('#story-start-orders-text');
+
+    if (startBtn) {
+        if (allDone) {
+            // Activer le bouton
+            startBtn.setAttribute('visible', 'true');
+            startBtn.setAttribute('color', '#00b894');
+            startBtn.setAttribute('class', 'clickable');
+            if (startBtnText) startBtnText.setAttribute('color', '#ffffff');
+
+            // Cacher la barre de progression
+            if (progressBg) progressBg.setAttribute('visible', 'false');
+            if (progressBar) progressBar.setAttribute('visible', 'false');
+            if (progressText) progressText.setAttribute('visible', 'false');
+
+            console.log('📖 START ORDERS button ENABLED');
+        }
     }
 }
 

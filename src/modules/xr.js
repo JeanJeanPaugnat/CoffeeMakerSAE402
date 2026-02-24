@@ -11,6 +11,7 @@ import { handleCoffeeMachineClick } from './coffee.js';
 import { handleDonutMachineClick } from './donut.js';
 import { toggleSpeakerPlay, nextTrack, prevTrack, selectTrack, createSpeakerUI, removeSpeakerUI } from './speaker.js';
 import { vrLog } from './log-panel.js';
+import { triggerStoryComplete } from './story.js';
 
 /**
  * Ajoute une surface détectée
@@ -352,12 +353,13 @@ function handleControllerInteraction(controller) {
 
     const isMenuVisible = state.inventoryEntity && state.inventoryEntity.object3D && state.inventoryEntity.object3D.visible;
     const isWelcomeVisible = state.welcomePanel !== null;
+    const storyPanelEl = document.getElementById('story-panel');
     const isSpeakerUIVisible = state.speakerUIEntity !== null;
 
     let line = controller.getObjectByName('laser-line');
     let cursor = controller.getObjectByName('laser-cursor');
 
-    if (!isMenuVisible && !isWelcomeVisible && !isSpeakerUIVisible) {
+    if (!isMenuVisible && !isWelcomeVisible && !isSpeakerUIVisible && !storyPanelEl) {
         if (line) line.visible = false;
         if (cursor) cursor.visible = false;
         return;
@@ -404,6 +406,15 @@ function handleControllerInteraction(controller) {
     if (state.welcomePanel && state.welcomePanel.object3D) {
         state.welcomePanel.object3D.traverse(child => {
             if (child.el && child.el.classList.contains('clickable') && child.isMesh) {
+                buttons.push(child);
+            }
+        });
+    }
+
+    // Story panel buttons (START ORDERS)
+    if (storyPanelEl && storyPanelEl.object3D) {
+        storyPanelEl.object3D.traverse(child => {
+            if (child.el && child.el.classList && child.el.classList.contains('clickable') && child.isMesh) {
                 buttons.push(child);
             }
         });
@@ -465,7 +476,10 @@ function handleControllerInteraction(controller) {
         if (window.isAnyBtnPressed && !window.uiClickLock) {
             window.uiClickLock = true;
 
-            if (el.id === 'welcome-close-btn') {
+            if (el.id === 'story-start-orders-btn') {
+                console.log('📖 START ORDERS clicked!');
+                triggerStoryComplete();
+            } else if (el.id === 'welcome-close-btn') {
                 console.log('📜 Closing Welcome Panel');
                 closeWelcomePanel();
             } else if (el.dataset && el.dataset.speakerAction) {
