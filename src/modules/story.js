@@ -3,11 +3,15 @@
  * Guide le joueur de manière immersive à travers les mécaniques du jeu
  * Révélation progressive des tâches + messages narratifs
  * Chaque étape complétée rapporte des points bonus
+ * 
+ * NOTE: A-Frame text (mozillavr font) ne supporte pas les emojis Unicode.
+ * On utilise des icônes textuelles entre crochets: [Store], [Broom], etc.
  */
 
 import { addScore } from './score.js';
 import { showARNotification } from './panels.js';
 import { vrLog } from './log-panel.js';
+import { playDing } from './sfx.js';
 
 // --- ÉTAT ---
 let isStoryActive = false;
@@ -27,41 +31,41 @@ let onStoryCompletedCallback = null;
 const STORY_STEPS = [
     {
         id: 'open_store',
-        icon: '🛒',
+        icon: '[Store]',
         label: 'Open the VR Store',
         description: 'Press Y to browse equipment',
         hint: 'Your tools await! Press Y.',
-        completionMsg: 'Store unlocked! So many tools! 🛠️',
+        completionMsg: 'Store unlocked! So many tools!',
         points: 5,
         completed: false
     },
     {
         id: 'place_broom',
-        icon: '🧹',
+        icon: '[Broom]',
         label: 'Place a Broom',
         description: 'Find BROOM in the store',
         hint: 'This place needs cleaning...',
-        completionMsg: 'A broom! Time to tidy up! 🧹',
+        completionMsg: 'A broom! Time to tidy up!',
         points: 10,
         completed: false
     },
     {
         id: 'grab_object',
-        icon: '✊',
+        icon: '[Grab]',
         label: 'Grab an object',
         description: 'Use the trigger to grab',
         hint: 'Try picking something up!',
-        completionMsg: 'Nice grip! You\'re a natural! 💪',
+        completionMsg: 'Nice grip! You are a natural!',
         points: 5,
         completed: false
     },
     {
         id: 'clean_stain',
-        icon: '✨',
+        icon: '[Clean]',
         label: 'Clean all stains',
         description: 'Sweep the floor clean',
         hint: 'The floor is filthy... sweep it!',
-        completionMsg: 'Sparkling clean! The floor shines! ✨',
+        completionMsg: 'Sparkling clean! The floor shines!',
         points: 15,
         completed: false,
         tracked: true,
@@ -70,71 +74,71 @@ const STORY_STEPS = [
     },
     {
         id: 'place_coffee_machine',
-        icon: '☕',
+        icon: '[Coffee]',
         label: 'Place a Coffee Machine',
         description: 'The heart of every cafe',
         hint: 'No coffee shop without a machine!',
-        completionMsg: 'The coffee machine is ready! ☕',
+        completionMsg: 'The coffee machine is ready!',
         points: 10,
         completed: false
     },
     {
         id: 'brew_coffee',
-        icon: '☕',
+        icon: '[Brew]',
         label: 'Brew a coffee',
         description: 'Aim at the machine, press B',
         hint: 'That machine looks ready to brew...',
-        completionMsg: 'Mmm... smells like fresh coffee! ☕',
+        completionMsg: 'Mmm... smells like fresh coffee!',
         points: 10,
         completed: false
     },
     {
         id: 'place_donut_box',
-        icon: '🍩',
+        icon: '[Donut]',
         label: 'Place a Donut Box',
         description: 'Customers love sweet treats',
         hint: 'Coffee goes great with donuts!',
-        completionMsg: 'Donuts! Customers will love these! 🍩',
+        completionMsg: 'Donuts! Customers will love these!',
         points: 10,
         completed: false
     },
     {
         id: 'make_donut',
-        icon: '🍩',
+        icon: '[Donut]',
         label: 'Make a donut',
         description: 'Aim at the box, press B',
         hint: 'Time to whip up some donuts!',
-        completionMsg: 'Fresh donut ready to serve! 🍩',
+        completionMsg: 'Fresh donut ready to serve!',
         points: 10,
         completed: false
     },
     {
         id: 'place_trashcan',
-        icon: '🗑️',
+        icon: '[Trash]',
         label: 'Place a Trashcan',
         description: 'Keep the shop tidy',
-        hint: 'You\ll need somewhere for trash...',
-        completionMsg: 'Trashcan placed! Staying organized! 🗑️',
+        hint: 'You will need somewhere for trash...',
+        completionMsg: 'Trashcan placed! Staying organized!',
         points: 10,
         completed: false
     },
     {
         id: 'trash_object',
-        icon: '🗑️',
+        icon: '[Trash]',
         label: 'Throw an object away',
         description: 'Bring an object to the trash',
         hint: 'Get rid of the mess!',
-        completionMsg: 'Clean and tidy! Good job! 🧼',
+        completionMsg: 'Clean and tidy! Good job!',
         points: 10,
         completed: false
     },
     {
         id: 'place_speaker',
-        icon: '🔊',
+        icon: '[Music]',
         label: 'Place a Speaker',
         description: 'Set the mood with music',
         hint: 'Every cafe needs a good vibe!',
-        completionMsg: 'The shop looks great! Ready for business! 🎉',
+        completionMsg: 'The shop looks great! Ready for business!',
         points: 10,
         completed: false
     }
@@ -154,15 +158,15 @@ export function initStory() {
         if (step.tracked) step.current = 0;
     }
 
-    console.log('📋 Shift Tasks initialized');
-    vrLog('📋 Your shift has begun!');
+    console.log('SHIFT TASKS initialized');
+    vrLog('Your shift has begun!');
 
     createStoryPanel();
     updateStoryPanel();
 
     // Notification d'introduction narrative
     setTimeout(() => {
-        showARNotification('📋 Check your task list!', 3000);
+        showARNotification('Check your task list!', 3000);
     }, 1000);
 }
 
@@ -181,7 +185,7 @@ export function notifyStoryEvent(eventId) {
     // Si l'étape est tracked (compteur), incrémenter
     if (step.tracked) {
         step.current++;
-        console.log(`📋 ${step.icon} ${step.current}/${step.required}`);
+        console.log(`${step.icon} ${step.current}/${step.required}`);
         vrLog(`${step.icon} ${step.current}/${step.required}`);
 
         // Pas encore terminé → juste mettre à jour l'affichage
@@ -199,11 +203,14 @@ export function notifyStoryEvent(eventId) {
     // Bonus points
     addScore(step.points, `Story: ${step.label}`);
 
-    console.log(`📋 ✅ Step completed: ${step.label} (+${step.points}pts)`);
-    vrLog(`📋 ✅ ${step.label}`);
+    // Son de complétion
+    playDing();
+
+    console.log(`Step completed: ${step.label} (+${step.points}pts)`);
+    vrLog(`Done: ${step.label}`);
 
     // Notification de félicitation — Message narratif !
-    showARNotification(step.completionMsg || `✅ ${step.label} (+${step.points}pts)`, 3000);
+    showARNotification(step.completionMsg || `${step.label} (+${step.points}pts)`, 3000);
 
     // Avancer l'indicateur vers la prochaine étape non complétée
     advanceToNextStep();
@@ -234,8 +241,8 @@ function advanceToNextStep() {
 function checkStoryCompletion() {
     const allDone = STORY_STEPS.every(s => s.completed);
     if (allDone && isStoryActive) {
-        console.log('📋 🎉 ALL SHIFT TASKS COMPLETE!');
-        vrLog('📋 🎉 Shift setup complete!');
+        console.log('ALL SHIFT TASKS COMPLETE!');
+        vrLog('Shift setup complete!');
 
         // Bonus de complétion
         addScore(50, 'Shift setup complete!');
@@ -243,7 +250,7 @@ function checkStoryCompletion() {
         isStoryActive = false;
 
         // Message de félicitation narratif
-        showARNotification('Amazing work, barista! Time to serve customers! 🎉', 5000);
+        showARNotification('Amazing work, barista! Time to serve customers!', 5000);
     }
 }
 
@@ -252,8 +259,8 @@ function checkStoryCompletion() {
  * Exporté pour être utilisé par xr.js
  */
 export function triggerStoryComplete() {
-    console.log('📋 START ORDERS button pressed!');
-    vrLog('📋 Opening for business...');
+    console.log('START ORDERS button pressed!');
+    vrLog('Opening for business...');
 
     // Cacher le panneau
     hideStoryPanel();
@@ -342,7 +349,7 @@ function createStoryPanel() {
     border.setAttribute('position', '0 0 -0.001');
     storyPanel.appendChild(border);
 
-    // Titre — "SHIFT TASKS" au lieu de "GUIDE"
+    // Titre — "SHIFT TASKS"
     const title = document.createElement('a-text');
     title.setAttribute('value', 'SHIFT TASKS');
     title.setAttribute('align', 'center');
@@ -371,12 +378,11 @@ function createStoryPanel() {
     storyPanel.appendChild(subTitle);
 
     // Créer les lignes de texte pour chaque étape
-    // On crée assez de slots pour toutes les étapes + texte "more..."
     storyPanelTexts = [];
     const startY = 0.20;
     const lineHeight = 0.045;
 
-    // Créer les slots pour les tâches visibles (max = toutes les tâches + 1 pour le "...")
+    // Créer les slots (max = toutes les tâches + 1 pour le "...")
     for (let i = 0; i < STORY_STEPS.length + 1; i++) {
         const textEl = document.createElement('a-text');
         textEl.setAttribute('align', 'left');
@@ -416,7 +422,7 @@ function createStoryPanel() {
     progressText.id = 'story-progress-text';
     storyPanel.appendChild(progressText);
 
-    // Bouton START ORDERS (grisé et caché au départ)
+    // Bouton OPEN SHOP (grisé et caché au départ)
     const startBtn = document.createElement('a-box');
     startBtn.setAttribute('width', '0.3');
     startBtn.setAttribute('height', '0.06');
@@ -449,7 +455,7 @@ function createStoryPanel() {
     });
 
     sceneEl.appendChild(storyPanel);
-    console.log('📋 Shift Tasks panel created');
+    console.log('Shift Tasks panel created');
 }
 
 /**
@@ -467,8 +473,7 @@ export function updateStoryPanel() {
         textEl.setAttribute('visible', 'false');
     }
 
-    // Compter les étapes visibles et les cachées
-    const shownSteps = visibleSteps.filter(v => v.visible);
+    // Compter les étapes cachées
     const hiddenCount = visibleSteps.filter(v => !v.visible).length;
 
     let textIndex = 0;
@@ -484,13 +489,13 @@ export function updateStoryPanel() {
         let prefix, color;
 
         if (step.completed) {
-            prefix = '✓';
+            prefix = '[X]';
             color = '#00b894'; // Vert
         } else if (index === currentStepIndex) {
-            prefix = '►';
+            prefix = '>';
             color = '#fdcb6e'; // Jaune — tâche active
         } else {
-            prefix = '○';
+            prefix = '[ ]';
             color = '#636e72'; // Gris
         }
 
@@ -539,7 +544,7 @@ export function updateStoryPanel() {
         if (currentStep && !currentStep.completed) {
             subtitleEl.setAttribute('value', currentStep.hint || currentStep.description);
         } else if (completedCount === STORY_STEPS.length) {
-            subtitleEl.setAttribute('value', 'All tasks done! You\\re ready!');
+            subtitleEl.setAttribute('value', 'All tasks done! You are ready!');
         }
     }
 
@@ -554,7 +559,7 @@ export function updateStoryPanel() {
         progressBar.setAttribute('width', barWidth);
         progressBar.setAttribute('position', `${-0.19 + barWidth / 2} -0.33 0.015`);
 
-        // Couleur progressive : rouge → orange → vert
+        // Couleur progressive : rouge > orange > vert
         if (progress < 0.33) {
             progressBar.setAttribute('color', '#e17055');
         } else if (progress < 0.66) {
@@ -598,7 +603,7 @@ export function updateStoryPanel() {
             if (progressBar) progressBar.setAttribute('visible', 'false');
             if (progressText) progressText.setAttribute('visible', 'false');
 
-            console.log('📋 OPEN SHOP button ENABLED');
+            console.log('OPEN SHOP button ENABLED');
         }
     }
 }

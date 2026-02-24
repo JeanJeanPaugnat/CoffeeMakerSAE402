@@ -3,6 +3,7 @@
  */
 
 import * as state from './state.js';
+import { playPaper } from './sfx.js';
 
 // Callback pour éviter la dépendance circulaire avec customers.js
 let onWelcomePanelClosed = null;
@@ -24,6 +25,9 @@ export function createWelcomePanel() {
     const cam = document.getElementById('cam');
     const scene = document.querySelector('a-scene');
     if (!cam || !scene) return null;
+
+    // Son de papier quand le briefing apparaît
+    playPaper();
 
     // Récupérer la position de la caméra pour placer le panneau devant
     const camPos = cam.object3D.position.clone();
@@ -97,12 +101,12 @@ export function createWelcomePanel() {
         'Welcome to Holo Coffee, rookie!\\n\\n' +
         'Today is your first day as our\\n' +
         'new barista. The shop is a mess\\n' +
-        'after last night\\s party...\\n' +
+        "after last night's party...\\n" +
         'Customers will be arriving soon!\\n\\n' +
         'Clean up the place, set up your\\n' +
         'machines, and get ready to serve\\n' +
         'the best coffee in town.\\n\\n' +
-        'I\\m counting on you!'
+        "I'm counting on you!"
     );
     storyText.setAttribute('align', 'center');
     storyText.setAttribute('position', '0 0.06 0.01');
