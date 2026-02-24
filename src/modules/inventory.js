@@ -330,7 +330,6 @@ export function spawnObject(type, color, model, customScale) {
 
     entity.setAttribute('position', `${spawnPos.x} ${spawnPos.y} ${spawnPos.z}`);
     entity.setAttribute('color', color);
-    entity.setAttribute('dynamic-body', 'mass:0.5;linearDamping:0.3;angularDamping:0.3');
     entity.setAttribute('class', 'clickable grabbable');
     entity.id = `spawned-${now}`;
 
@@ -362,12 +361,10 @@ export function spawnObject(type, color, model, customScale) {
         console.log('🔊 Speaker spawned, setting up UI...');
         state.debug('🔊 Speaker placé!');
 
-        // Attendre que le modèle soit chargé pour créer l'UI et appliquer la physique
+        // Attendre que le modèle soit chargé pour créer l'UI
         entity.addEventListener('model-loaded', () => {
             console.log('🔊 Speaker model loaded event fired');
             state.debug('🔊 Model loaded!');
-            // (Ré)appliquer la physique après chargement du modèle
-            entity.setAttribute('dynamic-body', 'mass:0.5;linearDamping:0.3;angularDamping:0.3');
             createSpeakerUI(entity);
         });
 
@@ -384,8 +381,18 @@ export function spawnObject(type, color, model, customScale) {
         }, 2000);
     }
 
+    // Ajouter l'entité à la scène D'ABORD, puis appliquer la physique
     state.sceneEl.appendChild(entity);
     state.spawnedObjects.push(entity);
+
+    // Appliquer la physique APRÈS l'ajout à la scène
+    // Les GLTF utilisent shape:box pour forcer une collision bounding-box
+    // Le système physique ré-essaiera automatiquement via object3dset quand le modèle charge
+    if (type === 'gltf') {
+        entity.setAttribute('dynamic-body', 'mass:0.5;linearDamping:0.3;angularDamping:0.3;shape:box');
+    } else {
+        entity.setAttribute('dynamic-body', 'mass:0.5;linearDamping:0.3;angularDamping:0.3');
+    }
 
     state.debug(`Spawné: ${type}`);
     console.log(`📦 Spawned ${type} at`, spawnPos);

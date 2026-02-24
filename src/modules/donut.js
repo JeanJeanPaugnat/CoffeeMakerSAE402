@@ -31,14 +31,18 @@ export function spawnDonut(machineEntity) {
     donut.setAttribute('gltf-model', 'url(models/Donut.glb)');
     donut.setAttribute('scale', '0.1 0.1 0.1');
     donut.setAttribute('position', `${donutPos.x} ${donutPos.y} ${donutPos.z}`);
-    donut.setAttribute('dynamic-body', 'mass:0.2;linearDamping:0.5;angularDamping:0.5');
     donut.setAttribute('class', 'clickable grabbable');
     donut.classList.add('donut');
     donut.id = `donut-${Date.now()}`;
     donut.dataset.isDonut = 'true';
 
+    // Ajouter à la scène D'ABORD, puis appliquer la physique
     state.sceneEl.appendChild(donut);
     state.spawnedObjects.push(donut);
+
+    // Appliquer la physique APRÈS l'ajout à la scène
+    // shape:box force une bounding-box de collision pour les GLTF
+    donut.setAttribute('dynamic-body', 'mass:0.2;linearDamping:0.5;angularDamping:0.5;shape:box');
 
     console.log('🍩 Donut créé');
     state.debug('🍩 Donut prêt!');
@@ -46,7 +50,7 @@ export function spawnDonut(machineEntity) {
     // Story mode
     notifyStoryEvent('make_donut');
     updateStoryPanel();
-    
+
     // Notifier le panneau de commandes
     try {
         onDonutCreated();
