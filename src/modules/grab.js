@@ -18,7 +18,7 @@ export function grab(controller) {
     // Find closest grabbable object
     const allGrabbables = [state.cubeEl, ...state.spawnedObjects];
     let closestEl = null;
-    let closestDist = 0.5;
+    let closestDist = 1.0; // Rayon de grab (1m pour les gros modèles)
 
     allGrabbables.forEach(el => {
         if (!el || !el.object3D) return;
@@ -35,6 +35,8 @@ export function grab(controller) {
         state.debug('Rien à attraper');
         return;
     }
+
+    console.log(`GRAB: ${closestEl.id} dist=${closestDist.toFixed(2)}`);
 
     state.debug('GRAB!');
 
@@ -69,7 +71,7 @@ export function release() {
 
     const velocities = state.getVelocities();
     let vx = 0, vy = 0, vz = 0;
-    
+
     if (velocities.length >= 2) {
         const l = velocities[velocities.length - 1];
         const f = velocities[0];
@@ -82,7 +84,7 @@ export function release() {
     }
 
     const el = state.currentGrabbedEl;
-    
+
     // Restore original color
     const originalColor = el._originalColor || '#8A2BE2';
     el.setAttribute('color', originalColor);
@@ -96,6 +98,16 @@ export function release() {
         el.body.updateMassProperties();
         el.body.velocity.set(vx, vy, vz);
         el.body.wakeUp();
+
+        // Speaker: rester toujours debout après lâcher
+        if (el.classList.contains('speaker')) {
+            el.body.angularFactor.set(0, 1, 0);
+            el.body.angularVelocity.set(0, 0, 0);
+            // Remettre droit (garder Y rotation)
+            const yRot = el.object3D.rotation.y;
+            el.object3D.rotation.set(0, yRot, 0);
+            el.body.quaternion.copy(el.object3D.quaternion);
+        }
     }
 
     state.setGrabbed(false);
@@ -145,7 +157,7 @@ export function rotateGrabbedObject(axis, value) {
     if (Math.abs(value) < 0.1) return;
 
     const rotSpeed = 0.05;
-    
+
     if (axis === 'y') {
         state.currentGrabbedEl.object3D.rotation.y += -value * rotSpeed;
     } else if (axis === 'x') {

@@ -28,14 +28,18 @@ export function spawnCoffeeCup(machineEntity) {
     cup.setAttribute('gltf-model', 'url(models/Coffeecup.glb)');
     cup.setAttribute('scale', '0.12 0.12 0.12');
     cup.setAttribute('position', `${cupPos.x} ${cupPos.y} ${cupPos.z}`);
-    cup.setAttribute('dynamic-body', 'mass:0.3;linearDamping:0.5;angularDamping:0.5');
     cup.setAttribute('class', 'clickable grabbable');
     cup.classList.add('coffee-cup');
     cup.id = `coffee-cup-${Date.now()}`;
     cup.dataset.isCoffee = 'true';
 
+    // Ajouter à la scène D'ABORD, puis appliquer la physique
     state.sceneEl.appendChild(cup);
     state.spawnedObjects.push(cup);
+
+    // Appliquer la physique APRÈS l'ajout à la scène
+    // shape:box force une bounding-box de collision pour les GLTF
+    cup.setAttribute('dynamic-body', 'mass:0.3;linearDamping:0.5;angularDamping:0.5;shape:box');
 
     console.log('☕ Tasse de café créée');
     console.log('☕ spawnedObjects count:', state.spawnedObjects.length);
@@ -44,7 +48,7 @@ export function spawnCoffeeCup(machineEntity) {
     // Story mode
     notifyStoryEvent('brew_coffee');
     updateStoryPanel();
-    
+
     // Notifier le panneau de commandes
     console.log('☕ About to call onCoffeeCreated...');
     try {

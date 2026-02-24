@@ -47,7 +47,6 @@ window.addEventListener('load', () => {
         const landingPage = document.getElementById('landing-page');
         const gameContainer = document.getElementById('game-container');
         const sceneEl = document.getElementById('scene');
-        const cubeEl = document.getElementById('cube');
         let cursorEl = document.getElementById('cursor');
 
         // Cacher la scène initialement
@@ -56,7 +55,7 @@ window.addEventListener('load', () => {
         }
 
         // Vérification des éléments requis
-        if (!sceneEl || !cubeEl) {
+        if (!sceneEl) {
             if (debugEl) debugEl.textContent = 'Éléments manquants!';
             console.error('Éléments manquants!');
             return;
@@ -77,7 +76,7 @@ window.addEventListener('load', () => {
         }
 
         // Initialisation de l'état global
-        state.setSceneElements(sceneEl, cubeEl, cursorEl, debugEl);
+        state.setSceneElements(sceneEl, null, cursorEl, debugEl);
 
         if (debugEl) debugEl.textContent = 'Prêt!';
 
@@ -87,7 +86,6 @@ window.addEventListener('load', () => {
 
         // Configurer le callback pour lancer le mode histoire après fermeture du welcome panel
         setOnWelcomePanelClosed(() => {
-            createWristTablet();
             initStory();
         });
 

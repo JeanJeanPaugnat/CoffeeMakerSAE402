@@ -11,6 +11,7 @@ import { handleCoffeeMachineClick } from './coffee.js';
 import { handleDonutMachineClick } from './donut.js';
 import { toggleSpeakerPlay, nextTrack, prevTrack, selectTrack, createSpeakerUI, removeSpeakerUI } from './speaker.js';
 import { vrLog } from './log-panel.js';
+import { triggerStoryComplete } from './story.js';
 
 /**
  * Ajoute une surface détectée
@@ -60,7 +61,7 @@ export async function startARSession() {
             if (handedness === 'right') window.rightController = window.ctrl0;
             if (handedness === 'left') window.leftController = window.ctrl0;
         });
-        
+
         window.ctrl1.addEventListener('connected', (e) => {
             const handedness = e.data.handedness;
             console.log('Controller 1 connected:', handedness);
@@ -84,11 +85,11 @@ export async function startARSession() {
             try {
                 const refSpace = state.sceneEl.renderer.xr.getReferenceSpace();
                 state.setXRRefSpace(refSpace);
-                
+
                 const viewer = await session.requestReferenceSpace('viewer');
                 const hitSource = await session.requestHitTestSource({ space: viewer });
                 state.setHitTestSource(hitSource);
-                
+
                 state.debug('Hit-test OK!');
             } catch (e) {
                 state.debug('Pas de hit-test');
@@ -233,7 +234,7 @@ function processControllerInputs() {
             if (bBtn && bBtn.pressed && !state.coffeeMachineLock) {
                 console.log('[DEBUG] B pressed, searching for machines...');
                 state.debug('B: Cherche machine...');
-                
+
                 const rightCtrl = window.rightController;
                 if (rightCtrl) {
                     const tempMatrix = new THREE.Matrix4();
@@ -246,11 +247,11 @@ function processControllerInputs() {
 
                     const machines = [];
                     console.log('[DEBUG] Checking', state.spawnedObjects.length, 'spawned objects');
-                    
+
                     state.spawnedObjects.forEach(obj => {
                         if (obj && obj.object3D) {
                             const model = obj.getAttribute('gltf-model');
-                            
+
                             if (model && model.includes('CoffeeMachine')) {
                                 console.log('[DEBUG] Found CoffeeMachine!');
                                 obj.object3D.traverse(child => {
@@ -284,7 +285,7 @@ function processControllerInputs() {
 
                     console.log('[DEBUG] Machines found:', machines.length);
                     state.debug(`Machines: ${machines.length}`);
-                    
+
                     const intersects = raycaster.intersectObjects(machines);
                     console.log('[DEBUG] Intersections:', intersects.length);
 
@@ -292,7 +293,7 @@ function processControllerInputs() {
                         const hitMesh = intersects[0].object;
                         const hitEntity = hitMesh.el;
                         const machineType = hitMesh.machineType;
-                        
+
                         if (hitEntity) {
                             if (machineType === 'coffee') {
                                 console.log('[DEBUG] Hit Coffee Machine!');
@@ -352,12 +353,13 @@ function handleControllerInteraction(controller) {
 
     const isMenuVisible = state.inventoryEntity && state.inventoryEntity.object3D && state.inventoryEntity.object3D.visible;
     const isWelcomeVisible = state.welcomePanel !== null;
+    const storyPanelEl = document.getElementById('story-panel');
     const isSpeakerUIVisible = state.speakerUIEntity !== null;
 
     let line = controller.getObjectByName('laser-line');
     let cursor = controller.getObjectByName('laser-cursor');
 
-    if (!isMenuVisible && !isWelcomeVisible && !isSpeakerUIVisible) {
+    if (!isMenuVisible && !isWelcomeVisible && !isSpeakerUIVisible && !storyPanelEl) {
         if (line) line.visible = false;
         if (cursor) cursor.visible = false;
         return;
@@ -393,7 +395,7 @@ function handleControllerInteraction(controller) {
 
     const buttons = [];
 
-    if (state.inventoryEntity && state.inventoryEntity.object3D) {
+    if (isMenuVisible && state.inventoryEntity && state.inventoryEntity.object3D) {
         state.inventoryEntity.object3D.traverse(child => {
             if (child.el && child.el.classList.contains('clickable') && child.isMesh) {
                 buttons.push(child);
@@ -408,7 +410,16 @@ function handleControllerInteraction(controller) {
             }
         });
     }
-    
+
+    // Story panel buttons (START ORDERS)
+    if (storyPanelEl && storyPanelEl.object3D) {
+        storyPanelEl.object3D.traverse(child => {
+            if (child.el && child.el.classList && child.el.classList.contains('clickable') && child.isMesh) {
+                buttons.push(child);
+            }
+        });
+    }
+
     // Speaker UI buttons
     if (state.speakerUIEntity && state.speakerUIEntity.object3D) {
         let speakerBtnCount = 0;
@@ -444,7 +455,7 @@ function handleControllerInteraction(controller) {
         const hit = intersects[0];
         const el = hit.object.el;
         const dist = hit.distance;
-        
+
         // Log ce qu'on détecte seulement au clic
         if (window.isAnyBtnPressed && !window.uiClickLock) {
             const elId = el?.id || 'no-id';
@@ -465,7 +476,10 @@ function handleControllerInteraction(controller) {
         if (window.isAnyBtnPressed && !window.uiClickLock) {
             window.uiClickLock = true;
 
-            if (el.id === 'welcome-close-btn') {
+            if (el.id === 'story-start-orders-btn') {
+                console.log('📖 START ORDERS clicked!');
+                triggerStoryComplete();
+            } else if (el.id === 'welcome-close-btn') {
                 console.log('📜 Closing Welcome Panel');
                 closeWelcomePanel();
             } else if (el.dataset && el.dataset.speakerAction) {
@@ -475,7 +489,7 @@ function handleControllerInteraction(controller) {
                 console.log('🔊 Speaker action detected:', action);
                 state.debug('🔊 ' + action);
                 el.setAttribute('color', '#e94560');
-                
+
                 if (action === 'toggle') {
                     vrLog('▶️ toggle!');
                     toggleSpeakerPlay();

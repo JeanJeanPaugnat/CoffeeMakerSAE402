@@ -3,7 +3,7 @@
  */
 
 import * as state from './state.js';
-import { createSpeakerUI, stopSpeaker, removeSpeakerUI } from './speaker.js';
+import { createSpeakerUI } from './speaker.js';
 import { notifyStoryEvent, updateStoryPanel } from './story.js';
 import { isItemUnlocked, getRequiredScore, setRefreshStoreCallback } from './unlocks.js';
 import { showARNotification } from './panels.js';
@@ -330,7 +330,6 @@ export function spawnObject(type, color, model, customScale) {
 
     entity.setAttribute('position', `${spawnPos.x} ${spawnPos.y} ${spawnPos.z}`);
     entity.setAttribute('color', color);
-    entity.setAttribute('dynamic-body', 'mass:0.5;linearDamping:0.3;angularDamping:0.3');
     entity.setAttribute('class', 'clickable grabbable');
     entity.id = `spawned-${now}`;
 
@@ -340,52 +339,40 @@ export function spawnObject(type, color, model, customScale) {
         state.trashcans.push(entity);
     }
 
-    // Si c'est un speaker, créer l'interface de musique
-    if (model && model.includes('BassSpeakers')) {
-        // Supprimer l'ancien speaker s'il existe
-        const oldSpeakers = document.querySelectorAll('.speaker');
-        if (oldSpeakers.length > 0) {
-            console.log('🔊 Removing old speaker(s)');
-            stopSpeaker(); // Arrêter la musique
-            removeSpeakerUI(); // Supprimer l'UI
-
-            oldSpeakers.forEach(oldSpeaker => {
-                // Retirer de spawnedObjects
-                const idx = state.spawnedObjects.indexOf(oldSpeaker);
-                if (idx > -1) state.spawnedObjects.splice(idx, 1);
-                // Supprimer du DOM
-                if (oldSpeaker.parentNode) oldSpeaker.parentNode.removeChild(oldSpeaker);
-            });
+    // Si c'est un speaker — un seul autorisé dans la scène
+    const isSpeaker = model && model.includes('BassSpeakers');
+    if (isSpeaker) {
+        const existingSpeaker = document.querySelector('.speaker');
+        if (existingSpeaker) {
+            console.log('🔊 Speaker already exists, blocking spawn');
+            showARNotification('Speaker already placed!', 2000);
+            return;
         }
 
         entity.classList.add('speaker');
-        console.log('🔊 Speaker spawned, setting up UI...');
-        state.debug('🔊 Speaker placé!');
+        console.log('🔊 Speaker spawned');
+        state.debug('🔊 Speaker placé! Appuie B pour ouvrir la musique');
 
-        // Attendre que le modèle soit chargé pour créer l'UI et appliquer la physique
-        entity.addEventListener('model-loaded', () => {
-            console.log('🔊 Speaker model loaded event fired');
-            state.debug('🔊 Model loaded!');
-            // (Ré)appliquer la physique après chargement du modèle
-            entity.setAttribute('dynamic-body', 'mass:0.5;linearDamping:0.3;angularDamping:0.3');
-            createSpeakerUI(entity);
-        });
-
-        // Fallback: créer l'UI après un délai si model-loaded ne se déclenche pas
+        // Empêcher le speaker de basculer — il reste toujours debout
+        // On bloque la rotation sur X et Z, seul Y (tourner) est autorisé
         setTimeout(() => {
-            console.log('🔊 Checking for speaker UI after timeout...');
-            if (!entity.querySelector('#speaker-ui')) {
-                console.log('🔊 Fallback: creating speaker UI after timeout');
-                state.debug('🔊 Fallback UI creation');
-                createSpeakerUI(entity);
-            } else {
-                console.log('🔊 Speaker UI already exists');
+            if (entity.body) {
+                entity.body.angularFactor.set(0, 1, 0);
+                console.log('🔊 Speaker upright constraint applied');
             }
-        }, 2000);
+        }, 1000);
     }
 
+    // Ajouter l'entité à la scène D'ABORD, puis appliquer la physique
     state.sceneEl.appendChild(entity);
     state.spawnedObjects.push(entity);
+
+    // Appliquer la physique APRÈS l'ajout à la scène
+    if (type === 'gltf') {
+        entity.setAttribute('dynamic-body', 'mass:0.5;linearDamping:0.3;angularDamping:0.3;shape:box');
+    } else {
+        entity.setAttribute('dynamic-body', 'mass:0.5;linearDamping:0.3;angularDamping:0.3');
+    }
 
     state.debug(`Spawné: ${type}`);
     console.log(`📦 Spawned ${type} at`, spawnPos);
@@ -419,14 +406,26 @@ function getItemLabelFromModel(model) {
 export function toggleInventory() {
     const menu = state.inventoryEntity;
     if (menu && menu.object3D) {
-        // Rafraîchir le store à chaque ouverture pour bien refléter les unlocks
-        refreshStoreUI();
         const vis = menu.object3D.visible;
-        menu.setAttribute('visible', !vis);
-        console.log('Toggle Menu:', !vis);
+        const nowVisible = !vis;
+
+        // Rafraîchir le store seulement à l'ouverture
+        if (nowVisible) refreshStoreUI();
+
+        menu.setAttribute('visible', nowVisible);
+
+        // Désactiver le raycast sur les sous-meshes quand le menu est fermé
+        // Layer 31 = inutilisé, le raycaster par défaut ne teste que le layer 0
+        menu.object3D.traverse(child => {
+            if (child.isMesh) {
+                child.layers.set(nowVisible ? 0 : 31);
+            }
+        });
+
+        console.log('Toggle Menu:', nowVisible);
 
         // Story mode: notifier l'ouverture du store
-        if (!vis) {
+        if (nowVisible) {
             notifyStoryEvent('open_store');
             updateStoryPanel();
         }
