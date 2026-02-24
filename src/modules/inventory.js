@@ -426,14 +426,26 @@ function getItemLabelFromModel(model) {
 export function toggleInventory() {
     const menu = state.inventoryEntity;
     if (menu && menu.object3D) {
-        // Rafraîchir le store à chaque ouverture pour bien refléter les unlocks
-        refreshStoreUI();
         const vis = menu.object3D.visible;
-        menu.setAttribute('visible', !vis);
-        console.log('Toggle Menu:', !vis);
+        const nowVisible = !vis;
+
+        // Rafraîchir le store seulement à l'ouverture
+        if (nowVisible) refreshStoreUI();
+
+        menu.setAttribute('visible', nowVisible);
+
+        // Désactiver le raycast sur les sous-meshes quand le menu est fermé
+        // Layer 31 = inutilisé, le raycaster par défaut ne teste que le layer 0
+        menu.object3D.traverse(child => {
+            if (child.isMesh) {
+                child.layers.set(nowVisible ? 0 : 31);
+            }
+        });
+
+        console.log('Toggle Menu:', nowVisible);
 
         // Story mode: notifier l'ouverture du store
-        if (!vis) {
+        if (nowVisible) {
             notifyStoryEvent('open_store');
             updateStoryPanel();
         }
