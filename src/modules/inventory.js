@@ -3,7 +3,7 @@
  */
 
 import * as state from './state.js';
-import { createSpeakerUI, stopSpeaker, removeSpeakerUI } from './speaker.js';
+import { createSpeakerUI } from './speaker.js';
 import { notifyStoryEvent, updateStoryPanel } from './story.js';
 import { isItemUnlocked, getRequiredScore, setRefreshStoreCallback } from './unlocks.js';
 import { showARNotification } from './panels.js';
@@ -339,46 +339,28 @@ export function spawnObject(type, color, model, customScale) {
         state.trashcans.push(entity);
     }
 
-    // Si c'est un speaker, créer l'interface de musique
-    if (model && model.includes('BassSpeakers')) {
-        // Supprimer l'ancien speaker s'il existe
-        const oldSpeakers = document.querySelectorAll('.speaker');
-        if (oldSpeakers.length > 0) {
-            console.log('🔊 Removing old speaker(s)');
-            stopSpeaker(); // Arrêter la musique
-            removeSpeakerUI(); // Supprimer l'UI
-
-            oldSpeakers.forEach(oldSpeaker => {
-                // Retirer de spawnedObjects
-                const idx = state.spawnedObjects.indexOf(oldSpeaker);
-                if (idx > -1) state.spawnedObjects.splice(idx, 1);
-                // Supprimer du DOM
-                if (oldSpeaker.parentNode) oldSpeaker.parentNode.removeChild(oldSpeaker);
-            });
+    // Si c'est un speaker — un seul autorisé dans la scène
+    const isSpeaker = model && model.includes('BassSpeakers');
+    if (isSpeaker) {
+        const existingSpeaker = document.querySelector('.speaker');
+        if (existingSpeaker) {
+            console.log('🔊 Speaker already exists, blocking spawn');
+            showARNotification('Speaker already placed!', 2000);
+            return;
         }
 
         entity.classList.add('speaker');
-        console.log('🔊 Speaker spawned, setting up UI...');
-        state.debug('🔊 Speaker placé!');
+        console.log('🔊 Speaker spawned');
+        state.debug('🔊 Speaker placé! Appuie B pour ouvrir la musique');
 
-        // Attendre que le modèle soit chargé pour créer l'UI
-        entity.addEventListener('model-loaded', () => {
-            console.log('🔊 Speaker model loaded event fired');
-            state.debug('🔊 Model loaded!');
-            createSpeakerUI(entity);
-        });
-
-        // Fallback: créer l'UI après un délai si model-loaded ne se déclenche pas
+        // Empêcher le speaker de basculer — il reste toujours debout
+        // On bloque la rotation sur X et Z, seul Y (tourner) est autorisé
         setTimeout(() => {
-            console.log('🔊 Checking for speaker UI after timeout...');
-            if (!entity.querySelector('#speaker-ui')) {
-                console.log('🔊 Fallback: creating speaker UI after timeout');
-                state.debug('🔊 Fallback UI creation');
-                createSpeakerUI(entity);
-            } else {
-                console.log('🔊 Speaker UI already exists');
+            if (entity.body) {
+                entity.body.angularFactor.set(0, 1, 0);
+                console.log('🔊 Speaker upright constraint applied');
             }
-        }, 2000);
+        }, 1000);
     }
 
     // Ajouter l'entité à la scène D'ABORD, puis appliquer la physique
@@ -386,8 +368,6 @@ export function spawnObject(type, color, model, customScale) {
     state.spawnedObjects.push(entity);
 
     // Appliquer la physique APRÈS l'ajout à la scène
-    // Les GLTF utilisent shape:box pour forcer une collision bounding-box
-    // Le système physique ré-essaiera automatiquement via object3dset quand le modèle charge
     if (type === 'gltf') {
         entity.setAttribute('dynamic-body', 'mass:0.5;linearDamping:0.3;angularDamping:0.3;shape:box');
     } else {
