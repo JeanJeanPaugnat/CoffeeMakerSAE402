@@ -31,6 +31,7 @@ import { initStains, startCleaningLoop } from './modules/cleaning.js';
 import { startARSession } from './modules/xr.js';
 import { initStory, setOnStoryCompleted } from './modules/story.js';
 import { initUnlocks } from './modules/unlocks.js';
+import { initSfx } from './modules/sfx.js';
 
 /* global THREE */
 
@@ -83,6 +84,7 @@ window.addEventListener('load', () => {
         // Initialisation de l'audio
         initCoffeeAudio();
         initBgMusic();
+        initSfx();
 
         // Configurer le callback pour lancer le mode histoire après fermeture du welcome panel
         setOnWelcomePanelClosed(() => {
