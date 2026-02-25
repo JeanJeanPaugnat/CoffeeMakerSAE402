@@ -7,9 +7,9 @@ import { notifyStoryEvent, updateStoryPanel } from './story.js';
 
 // Modèles de taches de sang disponibles
 const BLOOD_MODELS = [
-    '/CoffeeMakerSAE402/models/Blood.glb',
-    '/CoffeeMakerSAE402/models/BloodSplat.glb',
-    '/CoffeeMakerSAE402/models/BloodSplat2.glb'
+    '/models/Blood.glb',
+    '/models/BloodSplat.glb',
+    '/models/BloodSplat2.glb'
 ];
 
 /**
@@ -53,7 +53,7 @@ export function initStains() {
 export function checkCleaning() {
     // Only if holding the broom
     if (!state.grabbed || !state.currentGrabbedEl) return;
-    
+
     const model = state.currentGrabbedEl.getAttribute('gltf-model');
     if (!model || !model.includes('Broom')) return;
 
@@ -69,7 +69,7 @@ export function checkCleaning() {
 
         if (dist < 0.4 && verticalDist < 0.5) {
             stainObj.health -= 5;
-            
+
             // Réduire le scale proportionnellement à la santé
             const scaleFactor = (stainObj.health / 100) * stainObj.scale;
             stainObj.el.setAttribute('scale', `${scaleFactor} ${scaleFactor} ${scaleFactor}`);

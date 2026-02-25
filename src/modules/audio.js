@@ -8,7 +8,7 @@ import { coffeeAudio, setCoffeeAudio, bgMusic, setBgMusic } from './state.js';
  * Initialise l'audio pour la machine à café
  */
 export function initCoffeeAudio() {
-    const audio = new Audio('/CoffeeMakerSAE402/sounds/coffee_sound.mp3');
+    const audio = new Audio('/sounds/coffee_sound.mp3');
     audio.volume = 0.7;
     setCoffeeAudio(audio);
     return audio;
@@ -29,7 +29,7 @@ export function playCoffeeSound() {
  * Initialise la musique de fond
  */
 export function initBgMusic() {
-    const audio = new Audio('/CoffeeMakerSAE402/sounds/bg_music.mp3');
+    const audio = new Audio('/sounds/bg_music.mp3');
     audio.volume = 0.4;
     audio.loop = true;
     setBgMusic(audio);
