@@ -15,6 +15,7 @@ import { vrLog, initLogsPanel } from './log-panel.js';
 import { addScore, removeScore, getScore, incrementOrdersCompleted, resetScore, initScorePanel, setStreak, getStreak } from './score.js';
 import { notifyStoryEvent } from './story.js';
 import { playNewOrder, playOrderComplete, playOrderFail } from './sfx.js';
+import { submitScore } from './leaderboard.js';
 
 // --- ÉTAT ---
 let isInitialized = false;
@@ -779,6 +780,9 @@ function onItemCreated(itemType) {
 
         // Story mode
         notifyStoryEvent('complete_order');
+
+        // Submit score to leaderboard
+        submitScore();
 
         // Animation de célébration
         celebrateCompletion();

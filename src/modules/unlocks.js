@@ -1,6 +1,6 @@
 /**
- * Système de déverrouillage par points
- * Les items du VR Store se débloquent en gagnant des points
+ * Score-based unlock system
+ * VR Store items unlock as the player earns points
  */
 
 import { getScore, onScoreChange } from './score.js';
@@ -8,10 +8,10 @@ import { showARNotification } from './panels.js';
 import { vrLog } from './log-panel.js';
 
 // --- UNLOCK TIERS ---
-// Items gameplay essentiels: débloqués dès le départ (score: 0)
-// Items décoratifs: débloqués progressivement
+// Essential gameplay items: unlocked from the start (score: 0)
+// Decorative items: unlocked progressively
 const UNLOCK_TIERS = [
-    { score: 0, items: ['CUBE', 'COFFEE', 'POUBELLE', 'DONUT', 'BROOM', 'SPEAKER'] },
+    { score: 0, items: ['CUBE', 'COFFEE', 'TRASH CAN', 'DONUTS', 'BROOM', 'SPEAKER'] },
     { score: 50, items: ['REGISTER'] },
     { score: 100, items: ['SIGN'] },
     { score: 200, items: ['COUCH'] },
@@ -21,15 +21,14 @@ const UNLOCK_TIERS = [
 
 // Track which unlocks have already been notified
 let notifiedUnlocks = new Set();
-// Callback pour rafraîchir le store
+// Callback to refresh the store UI
 let refreshStoreCallback = null;
 
 /**
- * Initialise le système de déverrouillage
- * Se branche sur le callback onScoreChange de score.js
+ * Initializes the unlock system
+ * Hooks into the onScoreChange callback from score.js
  */
 export function initUnlocks() {
-    // Enregistrer le callback sur les changements de score
     onScoreChange((newScore) => {
         checkUnlocks(newScore);
     });
@@ -39,7 +38,7 @@ export function initUnlocks() {
 }
 
 /**
- * Enregistre un callback pour rafraîchir le VR Store
+ * Registers a callback to refresh the VR Store
  * @param {Function} callback
  */
 export function setRefreshStoreCallback(callback) {
@@ -47,8 +46,8 @@ export function setRefreshStoreCallback(callback) {
 }
 
 /**
- * Vérifie si un item est débloqué
- * @param {string} label - Le label de l'item (ex: 'COFFEE', 'COUCH')
+ * Checks if an item is unlocked
+ * @param {string} label - The item label (e.g. 'COFFEE', 'COUCH')
  * @returns {boolean}
  */
 export function isItemUnlocked(label) {
@@ -62,9 +61,9 @@ export function isItemUnlocked(label) {
 }
 
 /**
- * Retourne le score requis pour débloquer un item
- * @param {string} label - Le label de l'item
- * @returns {number} Le score requis, ou 0 si toujours disponible
+ * Returns the score required to unlock an item
+ * @param {string} label - The item label
+ * @returns {number} Required score, or 0 if always available
  */
 export function getRequiredScore(label) {
     for (const tier of UNLOCK_TIERS) {
@@ -76,7 +75,7 @@ export function getRequiredScore(label) {
 }
 
 /**
- * Retourne le prochain palier à débloquer
+ * Returns the next unlock tier
  * @returns {{ score: number, items: string[] } | null}
  */
 export function getNextUnlock() {
@@ -86,11 +85,11 @@ export function getNextUnlock() {
             return { score: tier.score, items: tier.items };
         }
     }
-    return null; // Tout est débloqué
+    return null; // Everything unlocked
 }
 
 /**
- * Retourne la liste de tous les items débloqués
+ * Returns a list of all unlocked items
  * @returns {string[]}
  */
 export function getUnlockedItems() {
@@ -105,8 +104,8 @@ export function getUnlockedItems() {
 }
 
 /**
- * Vérifie si de nouveaux items ont été débloqués
- * Appelé via le callback onScoreChange
+ * Checks if new items have been unlocked
+ * Called via the onScoreChange callback
  * @param {number} newScore
  */
 function checkUnlocks(newScore) {
@@ -120,7 +119,7 @@ function checkUnlocks(newScore) {
                     vrLog(`🔓 ${item} unlocked!`);
                     showARNotification(`🔓 New item: ${item}!`, 3000);
 
-                    // Rafraîchir le store si le callback est défini
+                    // Refresh the store if callback is set
                     if (refreshStoreCallback) {
                         refreshStoreCallback();
                     }

@@ -11,6 +11,7 @@ import { vrLog } from './log-panel.js';
 let totalScore = 0;
 let totalOrdersCompleted = 0;
 let currentStreak = 0;
+let bestStreak = 0; // Meilleur streak atteint dans la session
 
 // --- UI ---
 let scorePanel = null;
@@ -78,6 +79,7 @@ export function getScore() {
  */
 export function setStreak(streak) {
     currentStreak = streak;
+    if (streak > bestStreak) bestStreak = streak;
     notifyScoreChange();
 }
 
@@ -87,6 +89,14 @@ export function setStreak(streak) {
  */
 export function getStreak() {
     return currentStreak;
+}
+
+/**
+ * Retourne le meilleur streak atteint dans la session
+ * @returns {number}
+ */
+export function getBestStreak() {
+    return bestStreak;
 }
 
 /**
@@ -108,6 +118,7 @@ export function resetScore() {
     totalScore = 0;
     totalOrdersCompleted = 0;
     currentStreak = 0;
+    bestStreak = 0;
     console.log('Score reset');
     notifyScoreChange();
 }

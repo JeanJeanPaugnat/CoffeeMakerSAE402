@@ -32,6 +32,8 @@ import { startARSession } from './modules/xr.js';
 import { initStory, setOnStoryCompleted } from './modules/story.js';
 import { initUnlocks } from './modules/unlocks.js';
 import { initSfx } from './modules/sfx.js';
+import { getUsername, setUsername, hasUsername } from './modules/profile.js';
+import { renderLeaderboard, submitScoreSync } from './modules/leaderboard.js';
 
 /* global THREE */
 
@@ -48,6 +50,30 @@ window.addEventListener('load', () => {
         const landingPage = document.getElementById('landing-page');
         const gameContainer = document.getElementById('game-container');
         const sceneEl = document.getElementById('scene');
+        const usernameInput = document.getElementById('username-input');
+
+        // --- USERNAME GATING ---
+        // Pre-fill if username exists in localStorage
+        if (hasUsername() && usernameInput) {
+            usernameInput.value = getUsername();
+            startBtn.disabled = false;
+        }
+
+        // Enable/disable start button based on username
+        if (usernameInput) {
+            usernameInput.addEventListener('input', () => {
+                const val = usernameInput.value.trim();
+                startBtn.disabled = val.length === 0;
+            });
+        }
+
+        // --- LEADERBOARD ON LANDING PAGE ---
+        renderLeaderboard('leaderboard-container');
+
+        // --- BEFOREUNLOAD : save score on page close ---
+        window.addEventListener('beforeunload', () => {
+            submitScoreSync();
+        });
         let cursorEl = document.getElementById('cursor');
 
         // Cacher la scène initialement
@@ -99,6 +125,11 @@ window.addEventListener('load', () => {
         // --- GESTIONNAIRE DU BOUTON START ---
         startBtn.onclick = async () => {
             console.log('☕ Start button clicked!');
+
+            // Save username from input
+            if (usernameInput && usernameInput.value.trim()) {
+                setUsername(usernameInput.value.trim());
+            }
 
             // 1. Cacher la landing page
             if (landingPage) {
