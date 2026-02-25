@@ -4,7 +4,7 @@
  * Utilise le même base path que audio.js
  */
 
-const BASE_PATH = '/CoffeeMakerSAE402/sounds/';
+const BASE_PATH = '/sounds/';
 
 // --- SONS PRÉ-CHARGÉS ---
 const sfxCache = {};
