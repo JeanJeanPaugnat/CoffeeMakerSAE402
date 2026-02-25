@@ -15,8 +15,11 @@ export default async function handler(req, res) {
     }
 
     try {
-        if (!process.env.REDIS_URL || !process.env.REDIS_TOKEN) {
-            console.error('Missing REDIS_URL or REDIS_TOKEN environment variables');
+        const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || process.env.REDIS_URL;
+        const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || process.env.REDIS_TOKEN;
+
+        if (!redisUrl || !redisToken) {
+            console.error('Missing Redis environment variables');
             return res.status(500).json({ error: 'Database configuration missing' });
         }
 
@@ -33,8 +36,8 @@ export default async function handler(req, res) {
         const cleanUsername = username.trim().substring(0, 20); // Max 20 chars
 
         const redis = new Redis({
-            url: process.env.REDIS_URL,
-            token: process.env.REDIS_TOKEN,
+            url: redisUrl,
+            token: redisToken,
         });
 
         // Get current best score for this player

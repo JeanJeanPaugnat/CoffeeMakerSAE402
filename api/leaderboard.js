@@ -6,15 +6,18 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    if (!process.env.REDIS_URL || !process.env.REDIS_TOKEN) {
-        console.error('Missing REDIS_URL or REDIS_TOKEN environment variables');
+    const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || process.env.REDIS_URL;
+    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || process.env.REDIS_TOKEN;
+
+    if (!redisUrl || !redisToken) {
+        console.error('Missing Redis environment variables (checked UPSTASH_REST, KV_REST, and REDIS)');
         return res.status(500).json({ error: 'Database configuration missing. Please check Vercel environment variables.' });
     }
 
     try {
         const redis = new Redis({
-            url: process.env.REDIS_URL,
-            token: process.env.REDIS_TOKEN,
+            url: redisUrl,
+            token: redisToken,
         });
 
         const limit = Math.min(parseInt(req.query.limit) || 20, 100);
