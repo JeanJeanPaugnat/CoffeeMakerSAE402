@@ -1,12 +1,17 @@
 /**
- * Mode Histoire / Tutoriel guidé
- * Guide le joueur à travers les mécaniques du jeu avec une checklist interactive
+ * Mode Histoire / Tutoriel guidé — "SHIFT TASKS"
+ * Guide le joueur de manière immersive à travers les mécaniques du jeu
+ * Révélation progressive des tâches + messages narratifs
  * Chaque étape complétée rapporte des points bonus
+ * 
+ * NOTE: A-Frame text (mozillavr font) ne supporte pas les emojis Unicode.
+ * On utilise des icônes textuelles entre crochets: [Store], [Broom], etc.
  */
 
 import { addScore } from './score.js';
 import { showARNotification } from './panels.js';
 import { vrLog } from './log-panel.js';
+import { playDing } from './sfx.js';
 
 // --- ÉTAT ---
 let isStoryActive = false;
@@ -15,6 +20,9 @@ let storyPanelTexts = [];
 let currentStepIndex = 0;
 let stainsCleanedCount = 0;
 const STAINS_REQUIRED = 5;
+
+// Nombre de tâches visibles à la fois (révélation progressive)
+const VISIBLE_TASKS_COUNT = 4;
 
 // --- CALLBACK quand le story est terminé ---
 let onStoryCompletedCallback = null;
@@ -25,7 +33,9 @@ const STORY_STEPS = [
         id: 'open_store',
         icon: '[Store]',
         label: 'Open the VR Store',
-        description: 'Press Y to open the store',
+        description: 'Press Y to browse equipment',
+        hint: 'Your tools await! Press Y.',
+        completionMsg: 'Store unlocked! So many tools!',
         points: 5,
         completed: false
     },
@@ -33,7 +43,9 @@ const STORY_STEPS = [
         id: 'place_broom',
         icon: '[Broom]',
         label: 'Place a Broom',
-        description: 'Select BROOM in the store',
+        description: 'Find BROOM in the store',
+        hint: 'This place needs cleaning...',
+        completionMsg: 'A broom! Time to tidy up!',
         points: 10,
         completed: false
     },
@@ -41,7 +53,9 @@ const STORY_STEPS = [
         id: 'grab_object',
         icon: '[Grab]',
         label: 'Grab an object',
-        description: 'Grab with the trigger',
+        description: 'Use the trigger to grab',
+        hint: 'Try picking something up!',
+        completionMsg: 'Nice grip! You are a natural!',
         points: 5,
         completed: false
     },
@@ -49,7 +63,9 @@ const STORY_STEPS = [
         id: 'clean_stain',
         icon: '[Clean]',
         label: 'Clean all stains',
-        description: 'Use the broom to clean stains',
+        description: 'Sweep the floor clean',
+        hint: 'The floor is filthy... sweep it!',
+        completionMsg: 'Sparkling clean! The floor shines!',
         points: 15,
         completed: false,
         tracked: true,
@@ -60,15 +76,19 @@ const STORY_STEPS = [
         id: 'place_coffee_machine',
         icon: '[Coffee]',
         label: 'Place a Coffee Machine',
-        description: 'Select COFFEE in the store',
+        description: 'The heart of every cafe',
+        hint: 'No coffee shop without a machine!',
+        completionMsg: 'The coffee machine is ready!',
         points: 10,
         completed: false
     },
     {
         id: 'brew_coffee',
-        icon: '[Coffee]',
+        icon: '[Brew]',
         label: 'Brew a coffee',
-        description: 'Aim at the machine and press B',
+        description: 'Aim at the machine, press B',
+        hint: 'That machine looks ready to brew...',
+        completionMsg: 'Mmm... smells like fresh coffee!',
         points: 10,
         completed: false
     },
@@ -76,7 +96,9 @@ const STORY_STEPS = [
         id: 'place_donut_box',
         icon: '[Donut]',
         label: 'Place a Donut Box',
-        description: 'Select DONUT in the store',
+        description: 'Customers love sweet treats',
+        hint: 'Coffee goes great with donuts!',
+        completionMsg: 'Donuts! Customers will love these!',
         points: 10,
         completed: false
     },
@@ -84,7 +106,9 @@ const STORY_STEPS = [
         id: 'make_donut',
         icon: '[Donut]',
         label: 'Make a donut',
-        description: 'Aim at the box and press B',
+        description: 'Aim at the box, press B',
+        hint: 'Time to whip up some donuts!',
+        completionMsg: 'Fresh donut ready to serve!',
         points: 10,
         completed: false
     },
@@ -92,7 +116,9 @@ const STORY_STEPS = [
         id: 'place_trashcan',
         icon: '[Trash]',
         label: 'Place a Trashcan',
-        description: 'Select TRASHCAN in the store',
+        description: 'Keep the shop tidy',
+        hint: 'You will need somewhere for trash...',
+        completionMsg: 'Trashcan placed! Staying organized!',
         points: 10,
         completed: false
     },
@@ -100,15 +126,19 @@ const STORY_STEPS = [
         id: 'trash_object',
         icon: '[Trash]',
         label: 'Throw an object away',
-        description: 'Bring an object to the trashcan',
+        description: 'Bring an object to the trash',
+        hint: 'Get rid of the mess!',
+        completionMsg: 'Clean and tidy! Good job!',
         points: 10,
         completed: false
     },
     {
         id: 'place_speaker',
-        icon: '[Speaker]',
+        icon: '[Music]',
         label: 'Place a Speaker',
-        description: 'Select SPEAKER in the store',
+        description: 'Set the mood with music',
+        hint: 'Every cafe needs a good vibe!',
+        completionMsg: 'The shop looks great! Ready for business!',
         points: 10,
         completed: false
     }
@@ -128,15 +158,15 @@ export function initStory() {
         if (step.tracked) step.current = 0;
     }
 
-    console.log('📖 Story mode initialized');
-    vrLog('📖 Mode Histoire activé!');
+    console.log('SHIFT TASKS initialized');
+    vrLog('Your shift has begun!');
 
     createStoryPanel();
     updateStoryPanel();
 
-    // Notification d'introduction
+    // Notification d'introduction narrative
     setTimeout(() => {
-        showARNotification('📖 Mode Histoire: suis le guide!', 3000);
+        showARNotification('Check your task list!', 3000);
     }, 1000);
 }
 
@@ -155,7 +185,7 @@ export function notifyStoryEvent(eventId) {
     // Si l'étape est tracked (compteur), incrémenter
     if (step.tracked) {
         step.current++;
-        console.log(`📖 ${step.icon} ${step.current}/${step.required}`);
+        console.log(`${step.icon} ${step.current}/${step.required}`);
         vrLog(`${step.icon} ${step.current}/${step.required}`);
 
         // Pas encore terminé → juste mettre à jour l'affichage
@@ -173,11 +203,14 @@ export function notifyStoryEvent(eventId) {
     // Bonus points
     addScore(step.points, `Story: ${step.label}`);
 
-    console.log(`📖 ✅ Step completed: ${step.label} (+${step.points}pts)`);
-    vrLog(`📖 ✅ ${step.label}`);
+    // Son de complétion
+    playDing();
 
-    // Notification de félicitation
-    showARNotification(`[OK] ${step.icon} ${step.label} (+${step.points}pts)`, 3000);
+    console.log(`Step completed: ${step.label} (+${step.points}pts)`);
+    vrLog(`Done: ${step.label}`);
+
+    // Notification de félicitation — Message narratif !
+    showARNotification(step.completionMsg || `${step.label} (+${step.points}pts)`, 3000);
 
     // Avancer l'indicateur vers la prochaine étape non complétée
     advanceToNextStep();
@@ -208,16 +241,16 @@ function advanceToNextStep() {
 function checkStoryCompletion() {
     const allDone = STORY_STEPS.every(s => s.completed);
     if (allDone && isStoryActive) {
-        console.log('📖 🎉 STORY MODE COMPLETE!');
-        vrLog('📖 🎉 Tutoriel terminé!');
+        console.log('ALL SHIFT TASKS COMPLETE!');
+        vrLog('Shift setup complete!');
 
         // Bonus de complétion
-        addScore(50, 'Guide complete!');
+        addScore(50, 'Shift setup complete!');
 
         isStoryActive = false;
 
-        // Message de félicitation
-        showARNotification('Well done! Press START ORDERS on the panel!', 5000);
+        // Message de félicitation narratif
+        showARNotification('Amazing work, barista! Time to serve customers!', 5000);
     }
 }
 
@@ -226,8 +259,8 @@ function checkStoryCompletion() {
  * Exporté pour être utilisé par xr.js
  */
 export function triggerStoryComplete() {
-    console.log('📖 START ORDERS button pressed!');
-    vrLog('📖 Lancement des commandes...');
+    console.log('START ORDERS button pressed!');
+    vrLog('Opening for business...');
 
     // Cacher le panneau
     hideStoryPanel();
@@ -254,78 +287,120 @@ export function setOnStoryCompleted(callback) {
 }
 
 /**
- * Crée le panneau checklist en VR
- * Positionné à gauche du champ de vision
+ * Calcule quelles tâches sont visibles (révélation progressive)
+ * On montre :
+ *  - Toutes les tâches déjà complétées
+ *  - La tâche en cours
+ *  - Les N prochaines tâches non complétées (fenêtre glissante)
+ * @returns {Array<{step, index, visible}>}
+ */
+function getVisibleSteps() {
+    const result = [];
+    let visibleUncompleted = 0;
+
+    for (let i = 0; i < STORY_STEPS.length; i++) {
+        const step = STORY_STEPS[i];
+
+        if (step.completed) {
+            // Les tâches complétées sont toujours visibles
+            result.push({ step, index: i, visible: true });
+        } else if (visibleUncompleted < VISIBLE_TASKS_COUNT) {
+            // Montrer les N prochaines tâches non complétées
+            result.push({ step, index: i, visible: true });
+            visibleUncompleted++;
+        } else {
+            // Les tâches suivantes sont cachées
+            result.push({ step, index: i, visible: false });
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Crée le panneau checklist en VR — "SHIFT TASKS"
+ * Positionné devant le joueur dans le monde
  */
 function createStoryPanel() {
     if (storyPanel) return;
 
-    // Placer le panneau dans la scène (pas enfant de la caméra)
     const sceneEl = document.querySelector('a-scene');
     if (!sceneEl) return;
 
     storyPanel = document.createElement('a-entity');
     storyPanel.id = 'story-panel';
-    // Position fixe dans le monde (ex: devant le joueur, hauteur yeux)
+    // Position fixe dans le monde
     storyPanel.setAttribute('position', '0 1.5 -1.2');
 
-    // Fond principal
+    // Fond principal — plus sombre et immersif
     const bg = document.createElement('a-plane');
-    bg.setAttribute('width', '0.42');
-    bg.setAttribute('height', '0.72');
-    bg.setAttribute('color', '#1a1a2e');
-    bg.setAttribute('material', 'shader: flat; opacity: 0.92');
+    bg.setAttribute('width', '0.46');
+    bg.setAttribute('height', '0.78');
+    bg.setAttribute('color', '#0f0f1e');
+    bg.setAttribute('material', 'shader: flat; opacity: 0.94');
     storyPanel.appendChild(bg);
 
-    // Bordure
+    // Bordure — couleur chaude café
     const border = document.createElement('a-plane');
-    border.setAttribute('width', '0.44');
-    border.setAttribute('height', '0.74');
-    border.setAttribute('color', '#e17055');
+    border.setAttribute('width', '0.48');
+    border.setAttribute('height', '0.80');
+    border.setAttribute('color', '#d4a574');
     border.setAttribute('material', 'shader: flat');
     border.setAttribute('position', '0 0 -0.001');
     storyPanel.appendChild(border);
 
-    // Titre
+    // Titre — "SHIFT TASKS"
     const title = document.createElement('a-text');
-    title.setAttribute('value', '📖 GUIDE');
+    title.setAttribute('value', 'SHIFT TASKS');
     title.setAttribute('align', 'center');
-    title.setAttribute('position', '0 0.32 0.01');
+    title.setAttribute('position', '0 0.34 0.01');
     title.setAttribute('scale', '0.09 0.09 0.09');
-    title.setAttribute('color', '#e17055');
+    title.setAttribute('color', '#d4a574');
     title.setAttribute('font', 'mozillavr');
     storyPanel.appendChild(title);
 
     // Ligne décorative sous le titre
     const line = document.createElement('a-plane');
-    line.setAttribute('width', '0.3');
+    line.setAttribute('width', '0.32');
     line.setAttribute('height', '0.002');
-    line.setAttribute('color', '#e17055');
-    line.setAttribute('position', '0 0.28 0.01');
+    line.setAttribute('color', '#d4a574');
+    line.setAttribute('position', '0 0.30 0.01');
     storyPanel.appendChild(line);
+
+    // Sous-titre contextuel
+    const subTitle = document.createElement('a-text');
+    subTitle.setAttribute('value', 'Set up the shop before opening!');
+    subTitle.setAttribute('align', 'center');
+    subTitle.setAttribute('position', '0 0.26 0.01');
+    subTitle.setAttribute('scale', '0.04 0.04 0.04');
+    subTitle.setAttribute('color', '#8a8a9a');
+    subTitle.id = 'story-subtitle';
+    storyPanel.appendChild(subTitle);
 
     // Créer les lignes de texte pour chaque étape
     storyPanelTexts = [];
-    const startY = 0.22;
-    const lineHeight = 0.042;
+    const startY = 0.20;
+    const lineHeight = 0.045;
 
-    STORY_STEPS.forEach((step, index) => {
+    // Créer les slots (max = toutes les tâches + 1 pour le "...")
+    for (let i = 0; i < STORY_STEPS.length + 1; i++) {
         const textEl = document.createElement('a-text');
         textEl.setAttribute('align', 'left');
-        textEl.setAttribute('position', `-0.18 ${startY - index * lineHeight} 0.01`);
+        textEl.setAttribute('position', `-0.20 ${startY - i * lineHeight} 0.01`);
         textEl.setAttribute('scale', '0.055 0.055 0.055');
-        textEl.setAttribute('color', '#b2bec3');
-        textEl.setAttribute('wrap-count', '40');
+        textEl.setAttribute('color', '#636e72');
+        textEl.setAttribute('wrap-count', '42');
+        textEl.setAttribute('visible', 'false');
         storyPanel.appendChild(textEl);
         storyPanelTexts.push(textEl);
-    });
+    }
 
     // Barre de progression en bas
     const progressBg = document.createElement('a-plane');
-    progressBg.setAttribute('width', '0.36');
+    progressBg.setAttribute('width', '0.38');
     progressBg.setAttribute('height', '0.025');
-    progressBg.setAttribute('color', '#2d3436');
-    progressBg.setAttribute('position', '0 -0.32 0.01');
+    progressBg.setAttribute('color', '#1a1a2e');
+    progressBg.setAttribute('position', '0 -0.33 0.01');
     progressBg.id = 'story-progress-bg';
     storyPanel.appendChild(progressBg);
 
@@ -333,7 +408,7 @@ function createStoryPanel() {
     progressBar.setAttribute('width', '0.001');
     progressBar.setAttribute('height', '0.02');
     progressBar.setAttribute('color', '#00b894');
-    progressBar.setAttribute('position', '-0.18 -0.32 0.015');
+    progressBar.setAttribute('position', '-0.19 -0.33 0.015');
     progressBar.id = 'story-progress-bar';
     storyPanel.appendChild(progressBar);
 
@@ -341,24 +416,24 @@ function createStoryPanel() {
     const progressText = document.createElement('a-text');
     progressText.setAttribute('value', `0/${STORY_STEPS.length}`);
     progressText.setAttribute('align', 'center');
-    progressText.setAttribute('position', '0 -0.35 0.01');
+    progressText.setAttribute('position', '0 -0.36 0.01');
     progressText.setAttribute('scale', '0.05 0.05 0.05');
     progressText.setAttribute('color', '#636e72');
     progressText.id = 'story-progress-text';
     storyPanel.appendChild(progressText);
 
-    // Bouton START ORDERS (grisé et désactivé au départ)
+    // Bouton OPEN SHOP (grisé et caché au départ)
     const startBtn = document.createElement('a-box');
     startBtn.setAttribute('width', '0.3');
     startBtn.setAttribute('height', '0.06');
     startBtn.setAttribute('depth', '0.02');
     startBtn.setAttribute('color', '#2d3436');
-    startBtn.setAttribute('position', '0 -0.32 0.02');
+    startBtn.setAttribute('position', '0 -0.33 0.02');
     startBtn.setAttribute('visible', 'false');
     startBtn.id = 'story-start-orders-btn';
 
     const startBtnText = document.createElement('a-text');
-    startBtnText.setAttribute('value', 'START ORDERS');
+    startBtnText.setAttribute('value', 'OPEN SHOP');
     startBtnText.setAttribute('align', 'center');
     startBtnText.setAttribute('position', '0 0.01 0.02');
     startBtnText.setAttribute('scale', '0.08 0.08 0.08');
@@ -369,83 +444,166 @@ function createStoryPanel() {
 
     storyPanel.appendChild(startBtn);
 
+    // Animation d'entrée — slide depuis la droite
+    storyPanel.setAttribute('animation', {
+        property: 'position',
+        from: '1.5 1.5 -1.2',
+        to: '0 1.5 -1.2',
+        dur: 1000,
+        easing: 'easeOutCubic',
+        delay: 500
+    });
+
     sceneEl.appendChild(storyPanel);
-    console.log('📖 Story panel created (fixed in world)');
+    console.log('Shift Tasks panel created');
 }
 
 /**
  * Met à jour l'affichage du panneau checklist
+ * Utilise la révélation progressive — seules N tâches non complétées sont visibles
  */
 export function updateStoryPanel() {
     if (!storyPanel || storyPanelTexts.length === 0) return;
 
     const completedCount = STORY_STEPS.filter(s => s.completed).length;
+    const visibleSteps = getVisibleSteps();
 
-    STORY_STEPS.forEach((step, index) => {
-        const textEl = storyPanelTexts[index];
-        if (!textEl) return;
+    // Cacher toutes les lignes d'abord
+    for (const textEl of storyPanelTexts) {
+        textEl.setAttribute('visible', 'false');
+    }
+
+    // Compter les étapes cachées
+    const hiddenCount = visibleSteps.filter(v => !v.visible).length;
+
+    let textIndex = 0;
+
+    for (const { step, index, visible } of visibleSteps) {
+        if (!visible) continue;
+
+        const textEl = storyPanelTexts[textIndex];
+        if (!textEl) break;
+
+        textEl.setAttribute('visible', 'true');
 
         let prefix, color;
 
         if (step.completed) {
             prefix = '[X]';
-            color = '#00b894'; // Green
+            color = '#00b894'; // Vert
         } else if (index === currentStepIndex) {
             prefix = '>';
-            color = '#fdcb6e'; // Yellow
+            color = '#fdcb6e'; // Jaune — tâche active
         } else {
             prefix = '[ ]';
-            color = '#636e72'; // Gray
+            color = '#636e72'; // Gris
         }
 
-        // Show counter for tracked steps
+        // Afficher le compteur pour les tâches tracked
         let label = step.label;
         if (step.tracked && !step.completed) {
             label = `${step.label} (${step.current}/${step.required})`;
         }
 
         const fullText = `${prefix} ${step.icon} ${label}`;
-        // Force color update for A-Frame text
-        textEl.setAttribute('text', `value: ${fullText}; color: ${color}; align: left; wrapCount: 40`);
-    });
+        textEl.setAttribute('text', `value: ${fullText}; color: ${color}; align: left; wrapCount: 42`);
+
+        // Animation pulse sur la tâche courante (via scale oscillation)
+        if (index === currentStepIndex && !step.completed) {
+            textEl.setAttribute('animation__pulse', {
+                property: 'scale',
+                from: '0.055 0.055 0.055',
+                to: '0.062 0.062 0.062',
+                dur: 800,
+                dir: 'alternate',
+                loop: true,
+                easing: 'easeInOutSine'
+            });
+        } else {
+            textEl.removeAttribute('animation__pulse');
+            textEl.setAttribute('scale', '0.055 0.055 0.055');
+        }
+
+        textIndex++;
+    }
+
+    // Montrer combien de tâches restent cachées
+    if (hiddenCount > 0) {
+        const moreEl = storyPanelTexts[textIndex];
+        if (moreEl) {
+            moreEl.setAttribute('visible', 'true');
+            const moreText = `    ... ${hiddenCount} more task${hiddenCount > 1 ? 's' : ''}`;
+            moreEl.setAttribute('text', `value: ${moreText}; color: #4a4a5a; align: left; wrapCount: 42`);
+        }
+    }
+
+    // Mettre à jour le sous-titre avec le hint de la tâche en cours
+    const subtitleEl = storyPanel.querySelector('#story-subtitle');
+    if (subtitleEl) {
+        const currentStep = STORY_STEPS[currentStepIndex];
+        if (currentStep && !currentStep.completed) {
+            subtitleEl.setAttribute('value', currentStep.hint || currentStep.description);
+        } else if (completedCount === STORY_STEPS.length) {
+            subtitleEl.setAttribute('value', 'All tasks done! You are ready!');
+        }
+    }
 
     // Mettre à jour la barre de progression
-    const progressBg = storyPanel.querySelector('#story-progress-bg');
     const progressBar = storyPanel.querySelector('#story-progress-bar');
     const progressText = storyPanel.querySelector('#story-progress-text');
 
     if (progressBar) {
-        const maxWidth = 0.36;
+        const maxWidth = 0.38;
         const progress = completedCount / STORY_STEPS.length;
         const barWidth = Math.max(0.001, maxWidth * progress);
         progressBar.setAttribute('width', barWidth);
-        // Recalculer la position pour que la barre parte de la gauche
-        progressBar.setAttribute('position', `${-0.18 + barWidth / 2} -0.32 0.015`);
+        progressBar.setAttribute('position', `${-0.19 + barWidth / 2} -0.33 0.015`);
+
+        // Couleur progressive : rouge > orange > vert
+        if (progress < 0.33) {
+            progressBar.setAttribute('color', '#e17055');
+        } else if (progress < 0.66) {
+            progressBar.setAttribute('color', '#fdcb6e');
+        } else {
+            progressBar.setAttribute('color', '#00b894');
+        }
     }
 
     if (progressText) {
         progressText.setAttribute('value', `${completedCount}/${STORY_STEPS.length}`);
     }
 
-    // Activer/désactiver le bouton START ORDERS
+    // Activer/désactiver le bouton OPEN SHOP
     const allDone = completedCount === STORY_STEPS.length;
     const startBtn = storyPanel.querySelector('#story-start-orders-btn');
     const startBtnText = storyPanel.querySelector('#story-start-orders-text');
+    const progressBg = storyPanel.querySelector('#story-progress-bg');
 
     if (startBtn) {
         if (allDone) {
-            // Activer le bouton
+            // Activer le bouton avec animation
             startBtn.setAttribute('visible', 'true');
             startBtn.setAttribute('color', '#00b894');
             startBtn.setAttribute('class', 'clickable');
             if (startBtnText) startBtnText.setAttribute('color', '#ffffff');
+
+            // Animation pulse sur le bouton pour attirer l'attention
+            startBtn.setAttribute('animation__pulse', {
+                property: 'scale',
+                from: '1 1 1',
+                to: '1.08 1.08 1.08',
+                dur: 600,
+                dir: 'alternate',
+                loop: true,
+                easing: 'easeInOutSine'
+            });
 
             // Cacher la barre de progression
             if (progressBg) progressBg.setAttribute('visible', 'false');
             if (progressBar) progressBar.setAttribute('visible', 'false');
             if (progressText) progressText.setAttribute('visible', 'false');
 
-            console.log('📖 START ORDERS button ENABLED');
+            console.log('OPEN SHOP button ENABLED');
         }
     }
 }
@@ -456,9 +614,10 @@ export function updateStoryPanel() {
 function hideStoryPanel() {
     if (!storyPanel) return;
 
+    // Animation de sortie — slide vers la gauche
     storyPanel.setAttribute('animation', {
         property: 'position',
-        to: '-1.5 0.05 -0.8',
+        to: '-1.5 1.5 -1.2',
         dur: 800,
         easing: 'easeInCubic'
     });

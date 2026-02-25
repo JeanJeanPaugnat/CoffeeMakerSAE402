@@ -1,8 +1,9 @@
 /**
- * Panneaux UI (Welcome, Notifications)
+ * Panneaux UI (Welcome Briefing, Notifications)
  */
 
 import * as state from './state.js';
+import { playPaper } from './sfx.js';
 
 // Callback pour éviter la dépendance circulaire avec customers.js
 let onWelcomePanelClosed = null;
@@ -16,7 +17,8 @@ export function setOnWelcomePanelClosed(callback) {
 }
 
 /**
- * Crée le panneau de bienvenue avec les instructions
+ * Crée le panneau de bienvenue — "Manager Briefing" narratif
+ * Synopsis immersif : c'est ton premier jour, le café est en bazar !
  * @returns {Element} L'entité du panneau
  */
 export function createWelcomePanel() {
@@ -24,99 +26,130 @@ export function createWelcomePanel() {
     const scene = document.querySelector('a-scene');
     if (!cam || !scene) return null;
 
+    // Son de papier quand le briefing apparaît
+    playPaper();
+
     // Récupérer la position de la caméra pour placer le panneau devant
     const camPos = cam.object3D.position.clone();
     const camRot = cam.object3D.rotation;
-    
+
     // Calculer la position devant la caméra (1.5m de distance)
     const distance = 1.5;
     const targetX = camPos.x - Math.sin(camRot.y) * distance;
-    const targetY = camPos.y - 0.2; // Légèrement au-dessus des yeux
+    const targetY = camPos.y - 0.2;
     const targetZ = camPos.z - Math.cos(camRot.y) * distance;
-    
+
     // Position de départ (au-dessus, hors de vue)
     const startY = targetY + 2;
 
     const welcomePanel = document.createElement('a-entity');
     welcomePanel.setAttribute('position', `${targetX} ${startY} ${targetZ}`);
-    
+
     // Faire face à la caméra
     const angleY = (camRot.y * 180 / Math.PI);
     welcomePanel.setAttribute('rotation', `0 ${angleY} 0`);
 
-    // Paper Background
+    // === FOND PRINCIPAL — Style memo/lettre vieillie ===
     const paper = document.createElement('a-plane');
-    paper.setAttribute('width', '1.02');
-    paper.setAttribute('height', '1.24');
-    paper.setAttribute('color', '#f5f0e1');
+    paper.setAttribute('width', '1.0');
+    paper.setAttribute('height', '1.2');
+    paper.setAttribute('color', '#f5ecd7');
     paper.setAttribute('material', 'shader: flat; side: double');
     paper.setAttribute('position', '0 0 0');
     welcomePanel.appendChild(paper);
 
-    // Paper Shadow
+    // Ombre portée
     const shadow = document.createElement('a-plane');
-    shadow.setAttribute('width', '1.04');
-    shadow.setAttribute('height', '1.26');
-    shadow.setAttribute('color', '#8b7355');
-    shadow.setAttribute('opacity', '0.3');
-    shadow.setAttribute('position', '0.01 -0.01 -0.01');
+    shadow.setAttribute('width', '1.02');
+    shadow.setAttribute('height', '1.22');
+    shadow.setAttribute('color', '#5c3d1e');
+    shadow.setAttribute('opacity', '0.25');
+    shadow.setAttribute('position', '0.012 -0.012 -0.01');
     welcomePanel.appendChild(shadow);
 
-    // Title
-    const title = document.createElement('a-text');
-    title.setAttribute('value', '~ HOLO BARISTA ~');
-    title.setAttribute('align', 'center');
-    title.setAttribute('position', '0 0.56 0.01');
-    title.setAttribute('width', '1.5');
-    title.setAttribute('color', '#2d1810');
-    title.setAttribute('font', 'mozillavr');
-    welcomePanel.appendChild(title);
+    // === HEADER ===
+    const logo = document.createElement('a-text');
+    logo.setAttribute('value', 'HOLO BARISTA');
+    logo.setAttribute('align', 'center');
+    logo.setAttribute('position', '0 0.52 0.01');
+    logo.setAttribute('width', '1.6');
+    logo.setAttribute('color', '#8b4513');
+    logo.setAttribute('font', 'mozillavr');
+    welcomePanel.appendChild(logo);
 
-    // Decorative Line
-    const line = document.createElement('a-plane');
-    line.setAttribute('width', '0.5');
-    line.setAttribute('height', '0.003');
-    line.setAttribute('color', '#8b4513');
-    line.setAttribute('position', '0 0.16 0.01');
-    welcomePanel.appendChild(line);
+    // Sous-titre
+    const subtitle = document.createElement('a-text');
+    subtitle.setAttribute('value', '~ FIRST DAY ~');
+    subtitle.setAttribute('align', 'center');
+    subtitle.setAttribute('position', '0 0.43 0.01');
+    subtitle.setAttribute('width', '1.0');
+    subtitle.setAttribute('color', '#a0522d');
+    subtitle.setAttribute('font', 'mozillavr');
+    welcomePanel.appendChild(subtitle);
 
-    // Intro Text
-    const introText = document.createElement('a-text');
-    introText.setAttribute('value',
-        'Welcome to Holo Barista!\\n\\n' +
-        'You are the barista of a virtual coffee shop.\\n' +
-        'Your mission: serve delicious coffee!\\n\\n' +
-        '~ HOW TO PLAY ~\\n\\n' +
-        '1. Press Y to open the VR Store\\n' +
-        '2. Place a Coffee Machine\\n' +
-        '3. Point at it and press B to brew\\n' +
-        '4. Grab the cup and serve!\\n' +
-        '5. Use the Trash to clean up\\n\\n' +
-        'Good luck, barista!'
+    // Ligne décorative haute
+    const lineTop = document.createElement('a-plane');
+    lineTop.setAttribute('width', '0.7');
+    lineTop.setAttribute('height', '0.003');
+    lineTop.setAttribute('color', '#8b4513');
+    lineTop.setAttribute('position', '0 0.38 0.01');
+    welcomePanel.appendChild(lineTop);
+
+    // === TEXTE NARRATIF — Synopsis immersif ===
+    const storyText = document.createElement('a-text');
+    storyText.setAttribute('value',
+        'Welcome to Holo Coffee, rookie!\\n\\n' +
+        'Today is your first day as our\\n' +
+        'new barista. The shop is a mess\\n' +
+        "after last night's party...\\n" +
+        'Customers will be arriving soon!\\n\\n' +
+        'Clean up the place, set up your\\n' +
+        'machines, and get ready to serve\\n' +
+        'the best coffee in town.\\n\\n' +
+        "I'm counting on you!"
     );
-    introText.setAttribute('align', 'center');
-    introText.setAttribute('position', '0 -0.02 0.01');
-    introText.setAttribute('width', '1.1');
-    introText.setAttribute('color', '#3d2914');
-    introText.setAttribute('line-height', '55');
-    welcomePanel.appendChild(introText);
+    storyText.setAttribute('align', 'center');
+    storyText.setAttribute('position', '0 0.06 0.01');
+    storyText.setAttribute('width', '0.85');
+    storyText.setAttribute('color', '#3d2914');
+    storyText.setAttribute('line-height', '52');
+    welcomePanel.appendChild(storyText);
 
-    // Close Button
+    // Ligne décorative basse
+    const lineBottom = document.createElement('a-plane');
+    lineBottom.setAttribute('width', '0.4');
+    lineBottom.setAttribute('height', '0.003');
+    lineBottom.setAttribute('color', '#8b4513');
+    lineBottom.setAttribute('position', '0 -0.30 0.01');
+    welcomePanel.appendChild(lineBottom);
+
+    // Signature du manager
+    const signature = document.createElement('a-text');
+    signature.setAttribute('value', '-- The Manager');
+    signature.setAttribute('align', 'center');
+    signature.setAttribute('position', '0.15 -0.35 0.01');
+    signature.setAttribute('width', '0.7');
+    signature.setAttribute('color', '#6b3a1f');
+    signature.setAttribute('font', 'mozillavr');
+    welcomePanel.appendChild(signature);
+
+    // === BOUTON "BEGIN SHIFT" ===
     const closeBtn = document.createElement('a-box');
-    closeBtn.setAttribute('width', '0.2');
-    closeBtn.setAttribute('height', '0.06');
+    closeBtn.setAttribute('width', '0.3');
+    closeBtn.setAttribute('height', '0.07');
     closeBtn.setAttribute('depth', '0.02');
-    closeBtn.setAttribute('color', '#8b4513');
-    closeBtn.setAttribute('position', '0 -0.55 0.02');
+    closeBtn.setAttribute('color', '#6b3a1f');
+    closeBtn.setAttribute('position', '0 -0.50 0.02');
     closeBtn.setAttribute('class', 'clickable');
     closeBtn.id = 'welcome-close-btn';
 
     const closeTxt = document.createElement('a-text');
-    closeTxt.setAttribute('value', 'START');
+    closeTxt.setAttribute('value', 'BEGIN SHIFT');
     closeTxt.setAttribute('align', 'center');
     closeTxt.setAttribute('position', '0 0.01 0.02');
-    closeTxt.setAttribute('width', '1.2');
-    closeTxt.setAttribute('color', '#f5f0e1');
+    closeTxt.setAttribute('width', '1.1');
+    closeTxt.setAttribute('color', '#f5ecd7');
+    closeTxt.setAttribute('font', 'mozillavr');
     closeBtn.appendChild(closeTxt);
 
     // Hover effect
@@ -125,43 +158,61 @@ export function createWelcomePanel() {
         closeBtn.setAttribute('scale', '1.1 1.1 1.1');
     });
     closeBtn.addEventListener('mouseleave', () => {
-        closeBtn.setAttribute('color', '#8b4513');
+        closeBtn.setAttribute('color', '#6b3a1f');
         closeBtn.setAttribute('scale', '1 1 1');
     });
 
     welcomePanel.appendChild(closeBtn);
-    
-    // Attacher à la scène (ancré dans le monde, pas à la caméra)
+
+    // Attacher à la scène (ancré dans le monde)
     scene.appendChild(welcomePanel);
-    
-    // Animation de descente depuis le haut
+
+    // Animation de descente avec léger rebond élastique
     welcomePanel.setAttribute('animation', {
         property: 'position',
         to: `${targetX} ${targetY} ${targetZ}`,
-        dur: 1000,
-        easing: 'easeOutCubic'
+        dur: 1200,
+        easing: 'easeOutElastic'
     });
-    
+
     state.setWelcomePanel(welcomePanel);
-    console.log('📜 Welcome Panel Created with drop animation');
+    console.log('📜 Manager Briefing Panel created');
 
     return welcomePanel;
 }
 
 /**
- * Ferme le panneau de bienvenue
+ * Ferme le panneau de bienvenue avec animation fluide
+ * Glisse vers le bas + fade au lieu de suppression instantanée
  */
 export function closeWelcomePanel() {
     const panel = state.welcomePanel;
     if (panel && panel.parentNode) {
-        panel.parentNode.removeChild(panel);
-        state.setWelcomePanel(null);
-        state.debug('🟢 PANEL FERMÉ');
-        
-        // Appeler le callback (spawnCustomer) après un délai
-        if (onWelcomePanelClosed) {
-            setTimeout(onWelcomePanelClosed, 2000);
-        }
+        // Récupérer la position actuelle pour l'animation de sortie
+        const pos = panel.getAttribute('position');
+        const exitY = (pos?.y || 1.4) - 1.5;
+
+        // Animation de sortie : glisse vers le bas
+        panel.setAttribute('animation__exit', {
+            property: 'position',
+            to: `${pos?.x || 0} ${exitY} ${pos?.z || -1.5}`,
+            dur: 800,
+            easing: 'easeInCubic'
+        });
+
+        // Supprimer après la fin de l'animation
+        setTimeout(() => {
+            if (panel.parentNode) {
+                panel.parentNode.removeChild(panel);
+            }
+            state.setWelcomePanel(null);
+            state.debug('🟢 Briefing fermé');
+
+            // Appeler le callback (initStory) après un court délai
+            if (onWelcomePanelClosed) {
+                setTimeout(onWelcomePanelClosed, 1000);
+            }
+        }, 900);
     }
 }
 
@@ -201,5 +252,5 @@ export function showARNotification(message, duration = 2000) {
             }
         }, 50);
     }, duration);
-    
+
 }
