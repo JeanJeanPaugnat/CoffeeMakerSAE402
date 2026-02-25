@@ -1,4 +1,4 @@
-import { createClient } from '@vercel/kv';
+import { Redis } from '@upstash/redis'
 
 export default async function handler(req, res) {
     // CORS preflight
@@ -15,6 +15,11 @@ export default async function handler(req, res) {
     }
 
     try {
+        if (!process.env.REDIS_URL || !process.env.REDIS_TOKEN) {
+            console.error('Missing REDIS_URL or REDIS_TOKEN environment variables');
+            return res.status(500).json({ error: 'Database configuration missing' });
+        }
+
         const { username, score, ordersCompleted, bestStreak } = req.body;
 
         // Validation
@@ -27,21 +32,21 @@ export default async function handler(req, res) {
 
         const cleanUsername = username.trim().substring(0, 20); // Max 20 chars
 
-        const kv = createClient({
-            url: process.env.KV_REST_API_URL,
-            token: process.env.KV_REST_API_TOKEN,
+        const redis = new Redis({
+            url: process.env.REDIS_URL,
+            token: process.env.REDIS_TOKEN,
         });
 
         // Get current best score for this player
-        const currentBest = await kv.zscore('leaderboard', cleanUsername);
+        const currentBest = await redis.zscore('leaderboard', cleanUsername);
 
         // Only update if new score is higher (or no previous score)
         if (currentBest === null || score > Number(currentBest)) {
             // Update score in sorted set
-            await kv.zadd('leaderboard', { score, member: cleanUsername });
+            await redis.zadd('leaderboard', { score, member: cleanUsername });
 
             // Store player details in hash
-            await kv.hset(`player:${cleanUsername}`, {
+            await redis.hset(`player:${cleanUsername}`, {
                 ordersCompleted: ordersCompleted || 0,
                 bestStreak: bestStreak || 0,
                 timestamp: Date.now(),
@@ -49,7 +54,7 @@ export default async function handler(req, res) {
         }
 
         // Get player's current rank
-        const rank = await kv.zrevrank('leaderboard', cleanUsername);
+        const rank = await redis.zrevrank('leaderboard', cleanUsername);
 
         res.setHeader('Access-Control-Allow-Origin', '*');
 

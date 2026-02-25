@@ -1,4 +1,4 @@
-import { createClient } from '@vercel/kv';
+import { Redis } from '@upstash/redis'
 
 export default async function handler(req, res) {
     // Only allow GET
@@ -6,16 +6,21 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
+    if (!process.env.REDIS_URL || !process.env.REDIS_TOKEN) {
+        console.error('Missing REDIS_URL or REDIS_TOKEN environment variables');
+        return res.status(500).json({ error: 'Database configuration missing. Please check Vercel environment variables.' });
+    }
+
     try {
-        const kv = createClient({
-            url: process.env.KV_REST_API_URL,
-            token: process.env.KV_REST_API_TOKEN,
+        const redis = new Redis({
+            url: process.env.REDIS_URL,
+            token: process.env.REDIS_TOKEN,
         });
 
         const limit = Math.min(parseInt(req.query.limit) || 20, 100);
 
         // Get top scores from sorted set (descending)
-        const topPlayers = await kv.zrange('leaderboard', 0, limit - 1, { rev: true, withScores: true });
+        const topPlayers = await redis.zrange('leaderboard', 0, limit - 1, { rev: true, withScores: true });
 
         // topPlayers is [member, score, member, score, ...]
         // Build the response array
@@ -25,7 +30,7 @@ export default async function handler(req, res) {
             const score = topPlayers[i + 1];
 
             // Get player details from hash
-            const details = await kv.hgetall(`player:${username}`);
+            const details = await redis.hgetall(`player:${username}`);
 
             results.push({
                 rank: Math.floor(i / 2) + 1,
