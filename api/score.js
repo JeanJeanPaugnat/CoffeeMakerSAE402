@@ -1,4 +1,4 @@
-import { Redis } from '@upstash/redis'
+import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
     // CORS preflight
@@ -9,23 +9,21 @@ export default async function handler(req, res) {
         return res.status(200).end();
     }
 
-    // Only allow POST
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
     try {
-        const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || process.env.REDIS_URL;
-        const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || process.env.REDIS_TOKEN;
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-        if (!redisUrl || !redisToken) {
-            console.error('Missing Redis environment variables');
+        if (!supabaseUrl || !supabaseKey) {
+            console.error('Missing Supabase environment variables');
             return res.status(500).json({ error: 'Database configuration missing' });
         }
 
         const { username, score, ordersCompleted, bestStreak } = req.body;
 
-        // Validation
         if (!username || typeof username !== 'string' || username.trim().length === 0) {
             return res.status(400).json({ error: 'Username is required' });
         }
@@ -35,36 +33,51 @@ export default async function handler(req, res) {
 
         const cleanUsername = username.trim().substring(0, 20); // Max 20 chars
 
-        const redis = new Redis({
-            url: redisUrl,
-            token: redisToken,
-        });
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
-        // Get current best score for this player
-        const currentBest = await redis.zscore('leaderboard', cleanUsername);
+        // Get player's current score
+        const { data: existingPlayer, error: fetchError } = await supabase
+            .from('leaderboard')
+            .select('score')
+            .eq('username', cleanUsername)
+            .single();
 
-        // Only update if new score is higher (or no previous score)
-        if (currentBest === null || score > Number(currentBest)) {
-            // Update score in sorted set
-            await redis.zadd('leaderboard', { score, member: cleanUsername });
+        // fetchError will be thrown if no rows are returned (.single() requires 1 row)
+        // We can safely ignore it if it's "PGRST116" (Results contain 0 rows)
+        const isNewPlayer = !existingPlayer || (fetchError && fetchError.code === 'PGRST116');
 
-            // Store player details in hash
-            await redis.hset(`player:${cleanUsername}`, {
-                ordersCompleted: ordersCompleted || 0,
-                bestStreak: bestStreak || 0,
-                timestamp: Date.now(),
-            });
+        let finalScore = score;
+
+        if (isNewPlayer || score > existingPlayer.score) {
+            // Upsert the new score
+            const { error: upsertError } = await supabase
+                .from('leaderboard')
+                .upsert({
+                    username: cleanUsername,
+                    score: score,
+                    orders_completed: ordersCompleted || 0,
+                    best_streak: bestStreak || 0,
+                }, { onConflict: 'username' });
+
+            if (upsertError) throw upsertError;
+        } else {
+            finalScore = existingPlayer.score;
         }
 
-        // Get player's current rank
-        const rank = await redis.zrevrank('leaderboard', cleanUsername);
+        // Calculate rank by counting players with a strictly higher score
+        const { count, error: countError } = await supabase
+            .from('leaderboard')
+            .select('*', { count: 'exact', head: true })
+            .gt('score', finalScore);
+
+        if (countError) throw countError;
 
         res.setHeader('Access-Control-Allow-Origin', '*');
 
         return res.status(200).json({
             success: true,
-            rank: rank !== null ? rank + 1 : null,
-            bestScore: currentBest !== null ? Math.max(score, Number(currentBest)) : score,
+            rank: count !== null ? count + 1 : null,
+            bestScore: finalScore,
         });
     } catch (error) {
         console.error('Score submission error:', error);
