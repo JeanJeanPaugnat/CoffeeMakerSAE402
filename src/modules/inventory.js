@@ -1,7 +1,4 @@
-/**
- * VR Store / Inventory HUD System
- * Premium UI with animations, glow effects, and immersive interactions
- */
+
 
 import * as state from './state.js';
 import { createSpeakerUI } from './speaker.js';
@@ -9,15 +6,12 @@ import { notifyStoryEvent, updateStoryPanel } from './story.js';
 import { isItemUnlocked, getRequiredScore, setRefreshStoreCallback } from './unlocks.js';
 import { showARNotification } from './panels.js';
 
-/**
- * Store item definitions
- */
 const INVENTORY_ITEMS = [
     // Row 1: Essentials
     { type: 'box', color: '#ff7675', label: 'CUBE', category: 'BASIC' },
     { type: 'gltf', model: 'models/CoffeeMachine.glb', color: '#fab1a0', label: 'COFFEE', category: 'EQUIPMENT', menuScale: '0.2 0.2 0.2', spawnScale: '0.4 0.4 0.4' },
     { type: 'gltf', model: 'models/TrashcanSmall.glb', color: '#a29bfe', label: 'TRASH CAN', category: 'EQUIPMENT', menuScale: '0.2 0.2 0.2', spawnScale: '0.8 0.8 0.8' },
-    { type: 'gltf', model: 'models/BoxDonuts.glb', color: '#D2691E', label: 'DONUTS', category: 'FOOD', menuScale: '0.15 0.15 0.15', spawnScale: '0.3 0.3 0.3' },
+    { type: 'gltf', model: 'models/BoxDonuts.glb', color: '#D2691E', label: 'DONUTS', category: 'FOOD', menuScale: '0.18 0.18 0.18', spawnScale: '0.40 0.40 0.40' },
     // Row 2
     { type: 'gltf', label: 'SPEAKER', category: 'EQUIPMENT', model: 'models/BassSpeakers.glb', color: '#fff', menuScale: '0.1 0.1 0.1', spawnScale: '0.8 0.8 0.8' },
     { type: 'gltf', label: 'BROOM', category: 'EQUIPMENT', model: 'models/Broom.glb', color: '#fff', menuScale: '0.001 0.001 0.001', spawnScale: '0.004 0.004 0.004' },
@@ -30,10 +24,6 @@ const INVENTORY_ITEMS = [
 ];
 
 
-/**
- * Creates the HUD Store menu attached to the camera
- * @returns {Element} The menu entity
- */
 export function createHUDInventory() {
     const menu = document.createElement('a-entity');
     state.setInventoryEntity(menu);
@@ -138,10 +128,6 @@ export function createHUDInventory() {
     return menu;
 }
 
-/**
- * Builds item card buttons in the store menu
- * @param {Element} menu - The menu entity
- */
 function buildStoreItems(menu) {
     const gap = 0.38;
     const itemsPerRow = 4;
@@ -159,9 +145,6 @@ function buildStoreItems(menu) {
     });
 }
 
-/**
- * Refreshes the VR Store to update locked/unlocked items
- */
 export function refreshStoreUI() {
     const menu = state.inventoryEntity;
     if (!menu) return;
@@ -176,12 +159,10 @@ export function refreshStoreUI() {
     console.log('🛍️ Store UI refreshed');
 }
 
-/**
- * Creates a premium item card for the store
- */
 function createItemButton(item, x, y, index) {
     const btnGroup = document.createElement('a-entity');
     btnGroup.setAttribute('position', `${x} ${y} 0.05`);
+
 
     const unlocked = isItemUnlocked(item.label);
     const requiredScore = getRequiredScore(item.label);
@@ -423,15 +404,13 @@ function createItemButton(item, x, y, index) {
     return btnGroup;
 }
 
-/**
- * Spawns an object in front of the camera
- */
 export function spawnObject(type, color, model, customScale) {
     const now = Date.now();
     if (now - state.lastSpawnTime < 500) {
         console.warn('⚠️ Spawn rate limited');
         return;
     }
+
 
     // Check if item is locked
     const itemLabel = getItemLabelFromModel(model);
@@ -563,9 +542,6 @@ export function spawnObject(type, color, model, customScale) {
     }
 }
 
-/**
- * Helper: get item label from model path
- */
 function getItemLabelFromModel(model) {
     if (!model) return null;
     for (const item of INVENTORY_ITEMS) {
@@ -576,14 +552,12 @@ function getItemLabelFromModel(model) {
     return null;
 }
 
-/**
- * Toggle store visibility with premium open/close animations
- */
 export function toggleInventory() {
     const menu = state.inventoryEntity;
     if (menu && menu.object3D) {
         const vis = menu.object3D.visible;
         const nowVisible = !vis;
+
 
         if (nowVisible) {
             // Refresh store before showing
