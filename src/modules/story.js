@@ -1,33 +1,18 @@
-/**
- * Mode Histoire / Tutoriel guidé — "SHIFT TASKS"
- * Guide le joueur de manière immersive à travers les mécaniques du jeu
- * Révélation progressive des tâches + messages narratifs
- * Chaque étape complétée rapporte des points bonus
- * 
- * NOTE: A-Frame text (mozillavr font) ne supporte pas les emojis Unicode.
- * On utilise des icônes textuelles entre crochets: [Store], [Broom], etc.
- */
+
 
 import { addScore } from './score.js';
 import { showARNotification } from './panels.js';
 import { vrLog } from './log-panel.js';
 import { playDing } from './sfx.js';
 
-// --- ÉTAT ---
 let isStoryActive = false;
 let storyPanel = null;
 let storyPanelTexts = [];
 let currentStepIndex = 0;
 let stainsCleanedCount = 0;
 const STAINS_REQUIRED = 5;
-
-// Nombre de tâches visibles à la fois (révélation progressive)
 const VISIBLE_TASKS_COUNT = 4;
-
-// --- CALLBACK quand le story est terminé ---
 let onStoryCompletedCallback = null;
-
-// --- ÉTAPES DU TUTORIEL (dans l'ordre voulu) ---
 const STORY_STEPS = [
     {
         id: 'open_store',
@@ -144,87 +129,45 @@ const STORY_STEPS = [
     }
 ];
 
-/**
- * Initialise le mode histoire et crée le panneau checklist
- */
 export function initStory() {
     if (isStoryActive) return;
     isStoryActive = true;
     currentStepIndex = 0;
-
-    // Réinitialiser toutes les étapes du tutoriel
     for (const step of STORY_STEPS) {
         step.completed = false;
         if (step.tracked) step.current = 0;
     }
-
-    console.log('SHIFT TASKS initialized');
     vrLog('Your shift has begun!');
-
     createStoryPanel();
     updateStoryPanel();
-
-    // Notification d'introduction narrative
     setTimeout(() => {
         showARNotification('Check your task list!', 3000);
     }, 1000);
 }
 
-/**
- * Notifie le système story qu'un événement s'est produit
- * Appelé depuis les autres modules
- * Les étapes peuvent être complétées dans n'importe quel ordre
- * @param {string} eventId - L'identifiant de l'événement
- */
 export function notifyStoryEvent(eventId) {
     if (!isStoryActive) return;
-
     const step = STORY_STEPS.find(s => s.id === eventId);
     if (!step || step.completed) return;
-
-    // Si l'étape est tracked (compteur), incrémenter
     if (step.tracked) {
         step.current++;
-        console.log(`${step.icon} ${step.current}/${step.required}`);
         vrLog(`${step.icon} ${step.current}/${step.required}`);
-
-        // Pas encore terminé → juste mettre à jour l'affichage
         if (step.current < step.required) {
             showARNotification(`${step.icon} ${step.current}/${step.required}`, 1500);
             updateStoryPanel();
             return;
         }
-        // Sinon, on continue pour marquer comme complété
     }
-
-    // Marquer comme complété (n'importe quel ordre)
     step.completed = true;
-
-    // Bonus points
     addScore(step.points, `Story: ${step.label}`);
-
-    // Son de complétion
     playDing();
-
-    console.log(`Step completed: ${step.label} (+${step.points}pts)`);
     vrLog(`Done: ${step.label}`);
-
-    // Notification de félicitation — Message narratif !
     showARNotification(step.completionMsg || `${step.label} (+${step.points}pts)`, 3000);
-
-    // Avancer l'indicateur vers la prochaine étape non complétée
     advanceToNextStep();
-
-    // Mettre à jour le panneau
     updateStoryPanel();
-
-    // Vérifier si toutes les étapes sont complétées
     checkStoryCompletion();
 }
 
-/**
- * Avance l'indicateur vers la prochaine étape non complétée
- */
 function advanceToNextStep() {
     for (let i = 0; i < STORY_STEPS.length; i++) {
         if (!STORY_STEPS[i].completed) {
@@ -232,68 +175,35 @@ function advanceToNextStep() {
             return;
         }
     }
-    currentStepIndex = STORY_STEPS.length; // Toutes complétées
+    currentStepIndex = STORY_STEPS.length;
 }
 
-/**
- * Vérifie si toutes les étapes sont terminées
- */
 function checkStoryCompletion() {
     const allDone = STORY_STEPS.every(s => s.completed);
     if (allDone && isStoryActive) {
-        console.log('ALL SHIFT TASKS COMPLETE!');
         vrLog('Shift setup complete!');
-
-        // Bonus de complétion
         addScore(50, 'Shift setup complete!');
-
         isStoryActive = false;
-
-        // Message de félicitation narratif
         showARNotification('Amazing work, barista! Time to serve customers!', 5000);
     }
 }
 
-/**
- * Appelé quand le joueur appuie sur le bouton START ORDERS
- * Exporté pour être utilisé par xr.js
- */
 export function triggerStoryComplete() {
-    console.log('START ORDERS button pressed!');
     vrLog('Opening for business...');
-
-    // Cacher le panneau
     hideStoryPanel();
-
-    // Lancer le callback
     if (onStoryCompletedCallback) {
         try {
             onStoryCompletedCallback();
-            console.log('Story: callback executed OK');
         } catch (e) {
             console.error('Story: callback error:', e);
         }
-    } else {
-        console.warn('Story: no callback registered');
     }
 }
 
-/**
- * Définit le callback appelé quand le tutoriel est terminé
- * @param {Function} callback
- */
 export function setOnStoryCompleted(callback) {
     onStoryCompletedCallback = callback;
 }
 
-/**
- * Calcule quelles tâches sont visibles (révélation progressive)
- * On montre :
- *  - Toutes les tâches déjà complétées
- *  - La tâche en cours
- *  - Les N prochaines tâches non complétées (fenêtre glissante)
- * @returns {Array<{step, index, visible}>}
- */
 function getVisibleSteps() {
     const result = [];
     let visibleUncompleted = 0;
@@ -317,10 +227,6 @@ function getVisibleSteps() {
     return result;
 }
 
-/**
- * Crée le panneau checklist en VR — "SHIFT TASKS"
- * Positionné devant le joueur dans le monde
- */
 function createStoryPanel() {
     if (storyPanel) return;
 
@@ -395,6 +301,17 @@ function createStoryPanel() {
         storyPanelTexts.push(textEl);
     }
 
+    // --- TEXTE D'ASTUCE POUR LE RAFRAÎCHISSEMENT ---
+    const refreshHint = document.createElement('a-text');
+    refreshHint.setAttribute('value', '* Open VR Store (Y) to refresh checks *');
+    refreshHint.setAttribute('align', 'center');
+    refreshHint.setAttribute('position', '0 -0.27 0.01'); // Placé juste au-dessus de la barre de progression
+    refreshHint.setAttribute('scale', '0.035 0.035 0.035');
+    refreshHint.setAttribute('color', '#ff7675'); // Un rouge/saumon doux pour attirer l'œil sans agresser
+    refreshHint.setAttribute('font', 'mozillavr');
+    refreshHint.id = 'story-refresh-hint';
+    storyPanel.appendChild(refreshHint);
+
     // Barre de progression en bas
     const progressBg = document.createElement('a-plane');
     progressBg.setAttribute('width', '0.38');
@@ -444,8 +361,8 @@ function createStoryPanel() {
 
     storyPanel.appendChild(startBtn);
 
-    // Animation d'entrée — slide depuis la droite
-    storyPanel.setAttribute('animation', {
+// Animation d'entrée — slide depuis la droite (ON LA NOMME animation__enter)
+    storyPanel.setAttribute('animation__enter', {
         property: 'position',
         from: '1.5 1.5 -1.2',
         to: '0 1.5 -1.2',
@@ -458,33 +375,22 @@ function createStoryPanel() {
     console.log('Shift Tasks panel created');
 }
 
-/**
- * Met à jour l'affichage du panneau checklist
- * Utilise la révélation progressive — seules N tâches non complétées sont visibles
- */
+
 export function updateStoryPanel() {
     if (!storyPanel || storyPanelTexts.length === 0) return;
 
     const completedCount = STORY_STEPS.filter(s => s.completed).length;
     const visibleSteps = getVisibleSteps();
-
-    // Cacher toutes les lignes d'abord
-    for (const textEl of storyPanelTexts) {
-        textEl.setAttribute('visible', 'false');
-    }
-
-    // Compter les étapes cachées
     const hiddenCount = visibleSteps.filter(v => !v.visible).length;
 
     let textIndex = 0;
 
+    // 1. Mise à jour des lignes avec la syntaxe objet (Force le rafraîchissement 3D)
     for (const { step, index, visible } of visibleSteps) {
         if (!visible) continue;
 
         const textEl = storyPanelTexts[textIndex];
         if (!textEl) break;
-
-        textEl.setAttribute('visible', 'true');
 
         let prefix, color;
 
@@ -493,32 +399,42 @@ export function updateStoryPanel() {
             color = '#00b894'; // Vert
         } else if (index === currentStepIndex) {
             prefix = '>';
-            color = '#fdcb6e'; // Jaune — tâche active
+            color = '#fdcb6e'; // Jaune
         } else {
             prefix = '[ ]';
             color = '#636e72'; // Gris
         }
 
-        // Afficher le compteur pour les tâches tracked
         let label = step.label;
         if (step.tracked && !step.completed) {
             label = `${step.label} (${step.current}/${step.required})`;
         }
 
         const fullText = `${prefix} ${step.icon} ${label}`;
-        textEl.setAttribute('text', `value: ${fullText}; color: ${color}; align: left; wrapCount: 42`);
 
-        // Animation pulse sur la tâche courante (via scale oscillation)
+        // LA CORRECTION EST ICI : On passe un objet complet au composant 'text'
+        textEl.setAttribute('visible', true);
+        textEl.setAttribute('text', {
+            value: fullText,
+            color: color,
+            align: 'left',
+            wrapCount: 42
+        });
+
+        // Animation pulse sur la tâche courante
         if (index === currentStepIndex && !step.completed) {
-            textEl.setAttribute('animation__pulse', {
-                property: 'scale',
-                from: '0.055 0.055 0.055',
-                to: '0.062 0.062 0.062',
-                dur: 800,
-                dir: 'alternate',
-                loop: true,
-                easing: 'easeInOutSine'
-            });
+            // CORRECTION ICI : Ne l'appliquer que si elle n'y est pas déjà !
+            if (!textEl.hasAttribute('animation__pulse')) {
+                textEl.setAttribute('animation__pulse', {
+                    property: 'scale',
+                    from: '0.055 0.055 0.055',
+                    to: '0.062 0.062 0.062',
+                    dur: 800,
+                    dir: 'alternate',
+                    loop: true,
+                    easing: 'easeInOutSine'
+                });
+            }
         } else {
             textEl.removeAttribute('animation__pulse');
             textEl.setAttribute('scale', '0.055 0.055 0.055');
@@ -527,28 +443,40 @@ export function updateStoryPanel() {
         textIndex++;
     }
 
-    // Montrer combien de tâches restent cachées
-    if (hiddenCount > 0) {
+    // 2. Afficher la ligne "... X more tasks"
+    if (hiddenCount > 0 && textIndex < storyPanelTexts.length) {
         const moreEl = storyPanelTexts[textIndex];
         if (moreEl) {
-            moreEl.setAttribute('visible', 'true');
-            const moreText = `    ... ${hiddenCount} more task${hiddenCount > 1 ? 's' : ''}`;
-            moreEl.setAttribute('text', `value: ${moreText}; color: #4a4a5a; align: left; wrapCount: 42`);
+            moreEl.setAttribute('visible', true);
+            moreEl.setAttribute('text', {
+                value: `    ... ${hiddenCount} more task${hiddenCount > 1 ? 's' : ''}`,
+                color: '#4a4a5a',
+                align: 'left',
+                wrapCount: 42
+            });
+            moreEl.removeAttribute('animation__pulse');
+            moreEl.setAttribute('scale', '0.055 0.055 0.055');
+            textIndex++;
         }
     }
 
-    // Mettre à jour le sous-titre avec le hint de la tâche en cours
+    // 3. Cacher proprement les lignes restantes
+    for (let i = textIndex; i < storyPanelTexts.length; i++) {
+        storyPanelTexts[i].setAttribute('visible', false);
+    }
+
+    // --- MISE À JOUR DU SOUS-TITRE (Même logique de forçage) ---
     const subtitleEl = storyPanel.querySelector('#story-subtitle');
     if (subtitleEl) {
         const currentStep = STORY_STEPS[currentStepIndex];
         if (currentStep && !currentStep.completed) {
-            subtitleEl.setAttribute('value', currentStep.hint || currentStep.description);
+            subtitleEl.setAttribute('text', 'value', currentStep.hint || currentStep.description);
         } else if (completedCount === STORY_STEPS.length) {
-            subtitleEl.setAttribute('value', 'All tasks done! You are ready!');
+            subtitleEl.setAttribute('text', 'value', 'All tasks done! You are ready!');
         }
     }
 
-    // Mettre à jour la barre de progression
+    // --- MISE À JOUR DE LA PROGRESSION ---
     const progressBar = storyPanel.querySelector('#story-progress-bar');
     const progressText = storyPanel.querySelector('#story-progress-text');
 
@@ -559,7 +487,6 @@ export function updateStoryPanel() {
         progressBar.setAttribute('width', barWidth);
         progressBar.setAttribute('position', `${-0.19 + barWidth / 2} -0.33 0.015`);
 
-        // Couleur progressive : rouge > orange > vert
         if (progress < 0.33) {
             progressBar.setAttribute('color', '#e17055');
         } else if (progress < 0.66) {
@@ -570,24 +497,34 @@ export function updateStoryPanel() {
     }
 
     if (progressText) {
-        progressText.setAttribute('value', `${completedCount}/${STORY_STEPS.length}`);
+        // Forçage du texte de progression
+        progressText.setAttribute('text', 'value', `${completedCount}/${STORY_STEPS.length}`);
     }
 
-    // Activer/désactiver le bouton OPEN SHOP
+    // --- BOUTON DE FIN (OPEN SHOP) ---
     const allDone = completedCount === STORY_STEPS.length;
     const startBtn = storyPanel.querySelector('#story-start-orders-btn');
     const startBtnText = storyPanel.querySelector('#story-start-orders-text');
     const progressBg = storyPanel.querySelector('#story-progress-bg');
 
-    if (startBtn) {
-        if (allDone) {
-            // Activer le bouton avec animation
-            startBtn.setAttribute('visible', 'true');
+    if (startBtn && allDone) {
+// --- BOUTON DE FIN (OPEN SHOP) ---
+    const allDone = completedCount === STORY_STEPS.length;
+    const startBtn = storyPanel.querySelector('#story-start-orders-btn');
+    const startBtnText = storyPanel.querySelector('#story-start-orders-text');
+    const progressBg = storyPanel.querySelector('#story-progress-bg');
+    
+    // NOUVEAU : Récupérer le texte d'astuce
+    const refreshHint = storyPanel.querySelector('#story-refresh-hint');
+
+    if (allDone) {
+        // ... (Ton code existant pour le bouton StartBtn) ...
+        if (startBtn) {
+            startBtn.setAttribute('visible', true);
             startBtn.setAttribute('color', '#00b894');
             startBtn.setAttribute('class', 'clickable');
-            if (startBtnText) startBtnText.setAttribute('color', '#ffffff');
+            if (startBtnText) startBtnText.setAttribute('text', 'color', '#ffffff');
 
-            // Animation pulse sur le bouton pour attirer l'attention
             startBtn.setAttribute('animation__pulse', {
                 property: 'scale',
                 from: '1 1 1',
@@ -597,25 +534,31 @@ export function updateStoryPanel() {
                 loop: true,
                 easing: 'easeInOutSine'
             });
-
-            // Cacher la barre de progression
-            if (progressBg) progressBg.setAttribute('visible', 'false');
-            if (progressBar) progressBar.setAttribute('visible', 'false');
-            if (progressText) progressText.setAttribute('visible', 'false');
-
-            console.log('OPEN SHOP button ENABLED');
         }
+
+        if (progressBg) progressBg.setAttribute('visible', false);
+        if (progressBar) progressBar.setAttribute('visible', false);
+        if (progressText) progressText.setAttribute('visible', false);
+        
+        // Cacher l'astuce de rafraîchissement puisque tout est validé
+        if (refreshHint) refreshHint.setAttribute('visible', false);
+        
+    } else {
+        // Si tout n'est pas fini, s'assurer que l'astuce est visible
+        if (refreshHint) refreshHint.setAttribute('visible', true);
+    }
     }
 }
 
-/**
- * Cache le panneau story avec animation
- */
+
 function hideStoryPanel() {
     if (!storyPanel) return;
 
-    // Animation de sortie — slide vers la gauche
-    storyPanel.setAttribute('animation', {
+    // 1. On supprime l'animation d'entrée pour éviter tout conflit
+    storyPanel.removeAttribute('animation__enter');
+
+    // 2. On lance l'animation de sortie (ON LA NOMME animation__leave)
+    storyPanel.setAttribute('animation__leave', {
         property: 'position',
         to: '-1.5 1.5 -1.2',
         dur: 800,
@@ -631,18 +574,10 @@ function hideStoryPanel() {
     }, 1000);
 }
 
-/**
- * Vérifie si le mode histoire est actif
- * @returns {boolean}
- */
 export function isStoryModeActive() {
     return isStoryActive;
 }
 
-/**
- * Retourne la progression du mode histoire
- * @returns {{ completed: number, total: number, steps: Array }}
- */
 export function getStoryProgress() {
     return {
         completed: STORY_STEPS.filter(s => s.completed).length,
@@ -651,9 +586,6 @@ export function getStoryProgress() {
     };
 }
 
-/**
- * Détruit le panneau story
- */
 export function destroyStoryPanel() {
     if (storyPanel && storyPanel.parentNode) {
         storyPanel.parentNode.removeChild(storyPanel);
