@@ -1,6 +1,4 @@
-/**
- * Gestion de la session XR, contrôleurs et boucle principale
- */
+
 
 import * as state from './state.js';
 import { grab, release, updateGrabbedObject, rotateGrabbedObject } from './grab.js';
@@ -13,14 +11,10 @@ import { toggleSpeakerPlay, nextTrack, prevTrack, selectTrack, createSpeakerUI, 
 import { vrLog } from './log-panel.js';
 import { triggerStoryComplete } from './story.js';
 
-/**
- * Ajoute une surface détectée
- */
 export function addSurface(x, y, z) {
     for (const s of state.surfaces) {
         if (Math.abs(s.x - x) < 0.1 && Math.abs(s.y - y) < 0.1 && Math.abs(s.z - z) < 0.1) return;
     }
-
     const box = document.createElement('a-box');
     box.setAttribute('position', `${x} ${y} ${z}`);
     box.setAttribute('width', '0.2');
@@ -29,88 +23,60 @@ export function addSurface(x, y, z) {
     box.setAttribute('visible', 'false');
     box.setAttribute('static-body', '');
     state.sceneEl.appendChild(box);
-
     state.surfaces.push({ x, y, z });
-
     if (state.surfaces.length > 200) state.surfaces.shift();
 }
 
-/**
- * Démarre la session AR
- */
 export async function startARSession() {
     state.debug('Démarrage AR...');
-
     try {
         const session = await navigator.xr.requestSession('immersive-ar', {
             requiredFeatures: ['local-floor'],
             optionalFeatures: ['hit-test', 'dom-overlay'],
             domOverlay: { root: document.getElementById('overlay') }
         });
-
         state.setXRSession(session);
         state.sceneEl.renderer.xr.setSession(session);
-
-        // Setup controllers
         window.ctrl0 = state.sceneEl.renderer.xr.getController(0);
         window.ctrl1 = state.sceneEl.renderer.xr.getController(1);
-
         window.ctrl0.addEventListener('connected', (e) => {
             const handedness = e.data.handedness;
-            console.log('Controller 0 connected:', handedness);
             if (handedness === 'right') window.rightController = window.ctrl0;
             if (handedness === 'left') window.leftController = window.ctrl0;
         });
-
         window.ctrl1.addEventListener('connected', (e) => {
             const handedness = e.data.handedness;
-            console.log('Controller 1 connected:', handedness);
             if (handedness === 'right') window.rightController = window.ctrl1;
             if (handedness === 'left') window.leftController = window.ctrl1;
         });
-
         state.sceneEl.object3D.add(window.ctrl0);
         state.sceneEl.object3D.add(window.ctrl1);
-
-        // Grab events
         window.ctrl0.addEventListener('selectstart', () => grab(window.ctrl0));
         window.ctrl0.addEventListener('selectend', release);
         window.ctrl1.addEventListener('selectstart', () => grab(window.ctrl1));
         window.ctrl1.addEventListener('selectend', release);
-
         state.debug('AR OK! Read the instructions');
-
-        // Setup hit-test
         setTimeout(async () => {
             try {
                 const refSpace = state.sceneEl.renderer.xr.getReferenceSpace();
                 state.setXRRefSpace(refSpace);
-
                 const viewer = await session.requestReferenceSpace('viewer');
                 const hitSource = await session.requestHitTestSource({ space: viewer });
                 state.setHitTestSource(hitSource);
-
                 state.debug('Hit-test OK!');
             } catch (e) {
                 state.debug('Pas de hit-test');
             }
-
             session.requestAnimationFrame(xrLoop);
         }, 500);
-
         return session;
-
     } catch (e) {
         state.debug('Erreur: ' + e.message);
-        console.error('Erreur AR:', e.message);
         if (state.sceneEl) state.sceneEl.style.display = 'block';
         return null;
     }
 }
 
-/**
- * Boucle principale XR
- */
 function xrLoop(time, frame) {
     if (!state.xrSession) return;
     state.xrSession.requestAnimationFrame(xrLoop);
@@ -167,9 +133,6 @@ function xrLoop(time, frame) {
     updateGrabbedObject();
 }
 
-/**
- * Traite les entrées des contrôleurs
- */
 function processControllerInputs() {
     const ses = state.sceneEl.renderer.xr.getSession();
     if (!ses) return;
@@ -345,9 +308,6 @@ function processControllerInputs() {
     }
 }
 
-/**
- * Gère l'interaction laser avec le menu
- */
 function handleControllerInteraction(controller) {
     if (!controller) return;
 

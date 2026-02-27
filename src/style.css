@@ -282,3 +282,193 @@ body {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* ==============================
+   USERNAME INPUT
+   ============================== */
+.username-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.username-label {
+    font-size: 1rem;
+    color: #F4A460;
+    text-shadow: 1px 1px 2px black;
+}
+
+.username-input {
+    font-family: 'Changa One', cursive;
+    font-size: 1.2rem;
+    padding: 12px 24px;
+    border: 3px solid #8B4513;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #FFD700;
+    text-align: center;
+    width: 280px;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    backdrop-filter: blur(5px);
+}
+
+.username-input::placeholder {
+    color: rgba(244, 164, 96, 0.5);
+}
+
+.username-input:focus {
+    border-color: #FFD700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+/* Disabled state for PLAY button */
+.wood-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.wood-button:disabled:hover {
+    transform: none;
+    box-shadow: 
+        inset 0px 5px 0px rgba(255,255,255,0.2),
+        0px 8px 0px #5D2906,
+        0px 15px 20px rgba(0,0,0,0.4);
+    background: #8B4513;
+}
+
+/* ==============================
+   LEADERBOARD SECTION
+   ============================== */
+.landing-container {
+    overflow-y: auto;
+}
+
+.leaderboard-section {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.lb-title {
+    font-family: 'Changa One', cursive;
+    font-size: 2rem;
+    color: #FFD700;
+    text-align: center;
+    text-shadow: 3px 3px 0px #8B4513;
+    margin-bottom: 15px;
+}
+
+.lb-container {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 15px;
+    border: 2px solid #8B4513;
+    padding: 15px;
+    backdrop-filter: blur(10px);
+}
+
+.lb-loading, .lb-empty {
+    text-align: center;
+    color: #F4A460;
+    padding: 20px;
+    font-size: 1rem;
+}
+
+.lb-empty p:first-child {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+}
+
+/* Table */
+.lb-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Changa One', cursive;
+}
+
+.lb-table thead tr {
+    border-bottom: 2px solid #8B4513;
+}
+
+.lb-table th {
+    color: #F4A460;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    padding: 8px 6px;
+    text-align: left;
+}
+
+.lb-table th:first-child {
+    text-align: center;
+    width: 40px;
+}
+
+.lb-row {
+    border-bottom: 1px solid rgba(139, 69, 19, 0.3);
+    transition: background 0.2s;
+}
+
+.lb-row:hover {
+    background: rgba(139, 69, 19, 0.15);
+}
+
+.lb-row td {
+    padding: 10px 6px;
+    color: #ddd;
+    font-size: 0.95rem;
+}
+
+.lb-rank {
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+.lb-name {
+    font-weight: bold;
+    color: #fff;
+}
+
+.lb-score {
+    color: #FFD700;
+    font-weight: bold;
+}
+
+.lb-orders, .lb-streak {
+    color: #aaa;
+    font-size: 0.85rem;
+}
+
+/* Top 3 */
+.lb-top-1 td { color: #FFD700; }
+.lb-top-1 .lb-name { text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
+.lb-top-2 td { color: #C0C0C0; }
+.lb-top-3 td { color: #CD7F32; }
+
+/* Current user highlight */
+.lb-row-self {
+    background: rgba(255, 215, 0, 0.1) !important;
+    border-left: 3px solid #FFD700;
+}
+
+.lb-you {
+    font-size: 0.75rem;
+    color: #FFD700;
+    opacity: 0.8;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .lb-table th, .lb-row td {
+        padding: 6px 4px;
+        font-size: 0.8rem;
+    }
+    .leaderboard-section {
+        padding: 10px;
+    }
+    .lb-title {
+        font-size: 1.5rem;
+    }
+}

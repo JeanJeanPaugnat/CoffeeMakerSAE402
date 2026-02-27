@@ -1,13 +1,4 @@
-/**
- * Système de commandes v3 — "Ticket Board" Dark Kitchen
- * - Panneau fixé dans le monde (pas attaché à la caméra)
- * - Streak system (commandes consécutives)
- * - Timer avec pénalité réelle au timeout
- * - Speed bonus doublé si rapide
- * - Messages narratifs
- * - Effets visuels d'urgence
- * - Icônes texte compatibles A-Frame (pas d'emojis)
- */
+
 
 import * as state from './state.js';
 import { showARNotification } from './panels.js';
@@ -15,36 +6,13 @@ import { vrLog, initLogsPanel } from './log-panel.js';
 import { addScore, removeScore, getScore, incrementOrdersCompleted, resetScore, initScorePanel, setStreak, getStreak } from './score.js';
 import { notifyStoryEvent } from './story.js';
 import { playNewOrder, playOrderComplete, playOrderFail } from './sfx.js';
+import { submitScore } from './leaderboard.js';
 
-// --- ÉTAT ---
-let isInitialized = false;
-let orderCompleted = false;
-let orderCompletedTime = 0;
 
-// --- COMMANDE ACTUELLE ---
-let currentOrder = null;
-
-// --- TIMER ---
-let orderStartTime = 0;
-let timerInterval = null;
-
-// --- STREAK ---
-let currentStreak = 0;
-let consecutiveTimeouts = 0;
-
-// --- PANNEAU VR ---
-let ordersPanel = null;
-let ordersTitleText = null;
-let ordersItemsText = null;
-let ordersProgressBar = null;
-let ordersProgressBg = null;
-let ordersTimerBar = null;
-let ordersTimerBg = null;
-let ordersDifficultyText = null;
-let ordersStreakText = null;
-let ordersBorderEl = null;
-
-// --- DIFFICULTÉ ---
+let isInitialized = false, orderCompleted = false, orderCompletedTime = 0;
+let currentOrder = null, orderStartTime = 0, timerInterval = null;
+let currentStreak = 0, consecutiveTimeouts = 0;
+let ordersPanel = null, ordersTitleText = null, ordersItemsText = null, ordersProgressBar = null, ordersProgressBg = null, ordersTimerBar = null, ordersTimerBg = null, ordersDifficultyText = null, ordersStreakText = null, ordersBorderEl = null;
 const DIFFICULTY_TIERS = {
     easy: { label: 'EASY', color: '#00b894', borderColor: '#00cec9', timerSec: 60 },
     medium: { label: 'MEDIUM', color: '#fdcb6e', borderColor: '#f39c12', timerSec: 45 },
@@ -61,7 +29,6 @@ function getCurrentDifficulty() {
     return 'easy';
 }
 
-// --- COMMANDES POSSIBLES PAR DIFFICULTÉ ---
 const ORDERS_BY_DIFFICULTY = {
     easy: [
         { items: [{ type: 'coffee', icon: '[C]', label: 'Coffee', required: 1 }], bonusPoints: 5 },
@@ -111,7 +78,6 @@ const ORDERS_BY_DIFFICULTY = {
     ]
 };
 
-// --- MESSAGES NARRATIFS ---
 const COMPLETION_MESSAGES = [
     'Order up! Nice work!',
     'Another satisfied customer!',
@@ -139,26 +105,16 @@ const STREAK_MESSAGES = {
     10: 'x10!!! MASTER BARISTA!!!'
 };
 
-/**
- * Initialise les commandes
- */
 export function initOrders() {
-    if (isInitialized) {
-        console.log('Orders already initialized');
-        return;
-    }
+    if (isInitialized) return;
     isInitialized = true;
     currentStreak = 0;
     consecutiveTimeouts = 0;
-    console.log('Initializing orders v3...');
     vrLog('Kitchen ready!');
     generateNewOrder();
     startOrderLoop();
 }
 
-/**
- * Génère une nouvelle commande basée sur la difficulté actuelle
- */
 function generateNewOrder() {
     orderCompleted = false;
     orderCompletedTime = 0;
@@ -190,9 +146,6 @@ function generateNewOrder() {
     updatePanel();
 }
 
-/**
- * Démarre le timer de commande
- */
 function startTimer() {
     if (timerInterval) clearInterval(timerInterval);
 
@@ -246,9 +199,6 @@ function startTimer() {
     }, 100);
 }
 
-/**
- * Boucle de transition entre commandes
- */
 let loopStarted = false;
 let loopInterval = null;
 function startOrderLoop() {
@@ -268,27 +218,13 @@ function startOrderLoop() {
     console.log('Order loop started');
 }
 
-/**
- * Crée les commandes (format rétrocompatible)
- */
 export function generateNewOrders(count = 3) {
     generateNewOrder();
 }
 
-/**
- * Crée le panneau de commandes
- */
-export function createDebugPanel() {
-    createOrdersPanel();
-}
+export function createDebugPanel() { createOrdersPanel(); }
+export function createWristTablet() { createOrdersPanel(); }
 
-export function createWristTablet() {
-    createOrdersPanel();
-}
-
-/**
- * Crée le panneau de commandes — "Ticket Board" fixé dans le monde
- */
 function createOrdersPanel() {
     if (ordersPanel) return;
 
@@ -457,9 +393,6 @@ function createOrdersPanel() {
     updatePanel();
 }
 
-/**
- * Met à jour l'affichage du panneau
- */
 function updatePanel() {
     if (!ordersItemsText || !currentOrder) return;
 
@@ -533,9 +466,6 @@ function updatePanel() {
     }
 }
 
-/**
- * Met à jour la barre de progression
- */
 function updateProgressBar(progress) {
     if (!ordersProgressBar) return;
     const maxWidth = 0.46;
@@ -553,9 +483,6 @@ function updateProgressBar(progress) {
     }
 }
 
-/**
- * Met à jour la barre de timer
- */
 function updateTimerBar(remaining, total) {
     if (!ordersTimerBar) return;
     const maxWidth = 0.46;
@@ -574,9 +501,6 @@ function updateTimerBar(remaining, total) {
     }
 }
 
-/**
- * Effets d'urgence quand le timer est bas
- */
 function updateUrgencyEffects(remaining, total) {
     if (!ordersBorderEl) return;
     const ratio = remaining / total;
@@ -606,9 +530,6 @@ function updateUrgencyEffects(remaining, total) {
     }
 }
 
-/**
- * Reset les effets d'urgence
- */
 function resetUrgencyEffects() {
     if (!ordersBorderEl) return;
     ordersBorderEl.removeAttribute('animation__urgency');
@@ -616,9 +537,6 @@ function resetUrgencyEffects() {
     ordersBorderEl.setAttribute('color', tier.borderColor);
 }
 
-/**
- * Animation de célébration quand une commande est complétée
- */
 function celebrateCompletion() {
     if (!ordersPanel) return;
 
@@ -646,23 +564,8 @@ function celebrateCompletion() {
     }
 }
 
-/**
- * Appelé quand un café est créé
- */
-export function onCoffeeCreated() {
-    onItemCreated('coffee');
-}
-
-/**
- * Appelé quand un donut est créé
- */
-export function onDonutCreated() {
-    onItemCreated('donut');
-}
-
-/**
- * Logique commune pour tous les items
- */
+export function onCoffeeCreated() { onItemCreated('coffee'); }
+export function onDonutCreated() { onItemCreated('donut'); }
 function onItemCreated(itemType) {
     if (!isInitialized) {
         vrLog('Not init, fixing...');
@@ -780,6 +683,9 @@ function onItemCreated(itemType) {
         // Story mode
         notifyStoryEvent('complete_order');
 
+        // Submit score to leaderboard
+        submitScore();
+
         // Animation de célébration
         celebrateCompletion();
 
@@ -791,14 +697,8 @@ function onItemCreated(itemType) {
     }
 }
 
-/**
- * Retourne le score actuel (délègue au module score)
- */
 export { getStats as getScore } from './score.js';
 
-/**
- * Réinitialise tout
- */
 export function resetOrders() {
     orderCompleted = false;
     orderCompletedTime = 0;

@@ -1,55 +1,33 @@
-/**
- * Panneaux UI (Welcome Briefing, Notifications)
- */
+
 
 import * as state from './state.js';
 import { playPaper } from './sfx.js';
 
-// Callback pour éviter la dépendance circulaire avec customers.js
+
 let onWelcomePanelClosed = null;
 
-/**
- * Définit le callback appelé quand le panneau de bienvenue est fermé
- * @param {Function} callback
- */
+// Définit le callback appelé quand le panneau de bienvenue est fermé
 export function setOnWelcomePanelClosed(callback) {
     onWelcomePanelClosed = callback;
 }
 
-/**
- * Crée le panneau de bienvenue — "Manager Briefing" narratif
- * Synopsis immersif : c'est ton premier jour, le café est en bazar !
- * @returns {Element} L'entité du panneau
- */
+// Crée le panneau de bienvenue (Manager Briefing)
 export function createWelcomePanel() {
     const cam = document.getElementById('cam');
     const scene = document.querySelector('a-scene');
     if (!cam || !scene) return null;
-
-    // Son de papier quand le briefing apparaît
     playPaper();
-
-    // Récupérer la position de la caméra pour placer le panneau devant
     const camPos = cam.object3D.position.clone();
     const camRot = cam.object3D.rotation;
-
-    // Calculer la position devant la caméra (1.5m de distance)
     const distance = 1.5;
     const targetX = camPos.x - Math.sin(camRot.y) * distance;
     const targetY = camPos.y - 0.2;
     const targetZ = camPos.z - Math.cos(camRot.y) * distance;
-
-    // Position de départ (au-dessus, hors de vue)
     const startY = targetY + 2;
-
     const welcomePanel = document.createElement('a-entity');
     welcomePanel.setAttribute('position', `${targetX} ${startY} ${targetZ}`);
-
-    // Faire face à la caméra
     const angleY = (camRot.y * 180 / Math.PI);
     welcomePanel.setAttribute('rotation', `0 ${angleY} 0`);
-
-    // === FOND PRINCIPAL — Style memo/lettre vieillie ===
     const paper = document.createElement('a-plane');
     paper.setAttribute('width', '1.0');
     paper.setAttribute('height', '1.2');
@@ -181,50 +159,31 @@ export function createWelcomePanel() {
     return welcomePanel;
 }
 
-/**
- * Ferme le panneau de bienvenue avec animation fluide
- * Glisse vers le bas + fade au lieu de suppression instantanée
- */
+// Ferme le panneau de bienvenue avec animation fluide
 export function closeWelcomePanel() {
     const panel = state.welcomePanel;
     if (panel && panel.parentNode) {
-        // Récupérer la position actuelle pour l'animation de sortie
         const pos = panel.getAttribute('position');
         const exitY = (pos?.y || 1.4) - 1.5;
-
-        // Animation de sortie : glisse vers le bas
         panel.setAttribute('animation__exit', {
             property: 'position',
             to: `${pos?.x || 0} ${exitY} ${pos?.z || -1.5}`,
             dur: 800,
             easing: 'easeInCubic'
         });
-
-        // Supprimer après la fin de l'animation
         setTimeout(() => {
-            if (panel.parentNode) {
-                panel.parentNode.removeChild(panel);
-            }
+            if (panel.parentNode) panel.parentNode.removeChild(panel);
             state.setWelcomePanel(null);
             state.debug('🟢 Briefing fermé');
-
-            // Appeler le callback (initStory) après un court délai
-            if (onWelcomePanelClosed) {
-                setTimeout(onWelcomePanelClosed, 1000);
-            }
+            if (onWelcomePanelClosed) setTimeout(onWelcomePanelClosed, 1000);
         }, 900);
     }
 }
 
-/**
- * Affiche une notification AR temporaire
- * @param {string} message - Le message à afficher
- * @param {number} duration - Durée en ms avant disparition
- */
+// Affiche une notification AR temporaire
 export function showARNotification(message, duration = 2000) {
     const cam = document.getElementById('cam');
     if (!cam) return;
-
     const notification = document.createElement('a-text');
     notification.setAttribute('value', message);
     notification.setAttribute('align', 'center');
@@ -234,23 +193,17 @@ export function showARNotification(message, duration = 2000) {
     notification.setAttribute('opacity', '1');
     notification.setAttribute('background', '#000000');
     notification.setAttribute('padding', '0.1');
-
     cam.appendChild(notification);
-
-    // Fade out animation
     setTimeout(() => {
         let opacity = 1;
         const fadeInterval = setInterval(() => {
             opacity -= 0.05;
             if (opacity <= 0) {
                 clearInterval(fadeInterval);
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
+                if (notification.parentNode) notification.parentNode.removeChild(notification);
             } else {
                 notification.setAttribute('opacity', opacity.toString());
             }
         }, 50);
     }, duration);
-
 }

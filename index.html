@@ -27,7 +27,14 @@
         Become a legendary master barista.
       </p>
 
-      <button id="start-btn" class="wood-button">
+      <!-- Username input -->
+      <div class="username-section">
+        <label for="username-input" class="username-label">Enter your barista name</label>
+        <input type="text" id="username-input" class="username-input" placeholder="Your name..." maxlength="20"
+          autocomplete="off">
+      </div>
+
+      <button id="start-btn" class="wood-button" disabled>
         <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
             class="lucide lucide-coffee-icon lucide-coffee">
@@ -40,6 +47,14 @@
 
       <p class="vr-hint">Build for XR devices</p>
     </main>
+
+    <!-- Leaderboard Section -->
+    <section class="leaderboard-section">
+      <h2 class="lb-title">🏆 Leaderboard</h2>
+      <div id="leaderboard-container" class="lb-container">
+        <p class="lb-loading">Loading leaderboard...</p>
+      </div>
+    </section>
 
     <footer class="footer">
       <div class="socials">
